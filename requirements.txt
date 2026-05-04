@@ -24,3 +24,9 @@ httpx
 
 #hash functions
 xxhash
+
+pyspark
+
+#model comparison
+implicit
+gensim
