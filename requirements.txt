@@ -24,3 +24,5 @@ httpx
 
 #hash functions
 xxhash
+
+pyspark

@@ -4,3 +4,10 @@ data/
 .ruff_cache
 .pytest_cache
 processed_data/
+.claude/
+hadoop/
+dataset/src/
+src/logs/
+src/__pycache__/
+*.log
+*.pkl

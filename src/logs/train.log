@@ -2242,3 +2242,9 @@
 2026-03-21 15:28:11 INFO [train] Full ETL pipeline completed successfully in 54.11 seconds
 2026-03-21 15:47:15 ERROR [train] Full ETL pipeline failed after 98.72 seconds
 2026-03-21 15:53:42 INFO [train] Full ETL pipeline completed successfully in 119.40 seconds
+2026-05-04 10:02:24 ERROR [train] Full ETL pipeline failed after 10.17 seconds
+2026-05-04 10:02:39 ERROR [train] Full ETL pipeline failed after 9.11 seconds
+2026-05-04 10:16:15 ERROR [train] Full ETL pipeline failed after 21.41 seconds
+2026-05-04 10:20:28 ERROR [train] Full ETL pipeline failed after 8.91 seconds
+2026-05-04 10:25:14 INFO [train] Full ETL pipeline completed successfully in 228.54 seconds
+2026-05-04 10:29:04 INFO [train] Full ETL pipeline completed successfully in 226.73 seconds

@@ -27145,3 +27145,27 @@
 2026-03-21 15:53:27 INFO [track_etl] Saved interaction pairs to Parquet, building sparse matrix...
 2026-03-21 15:53:41 INFO [track_etl] Saved sparse matrix (1000000, 2261725) to processed_data/interaction_matrix.npz
 2026-03-21 15:53:41 INFO [track_etl] Completed building playlist-track interaction matrix
+2026-05-04 10:02:23 INFO [track_etl] Starting ETL job
+2026-05-04 10:02:23 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:02:38 INFO [track_etl] Starting ETL job
+2026-05-04 10:02:38 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:16:14 INFO [track_etl] Starting ETL job
+2026-05-04 10:16:14 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:20:27 INFO [track_etl] Starting ETL job
+2026-05-04 10:20:27 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:21:34 INFO [track_etl] Starting ETL job
+2026-05-04 10:21:34 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:21:37 INFO [track_etl] Writing output to: processed_data
+2026-05-04 10:23:30 INFO [track_etl] ETL pipeline finished
+2026-05-04 10:23:30 INFO [track_etl] Building playlist-song interaction matrix...
+2026-05-04 10:24:55 INFO [track_etl] Saved interaction pairs to Parquet, building sparse matrix...
+2026-05-04 10:25:13 INFO [track_etl] Saved sparse matrix (1000000, 2261725) to processed_data\interaction_matrix.npz
+2026-05-04 10:25:13 INFO [track_etl] Completed building playlist-track interaction matrix
+2026-05-04 10:25:26 INFO [track_etl] Starting ETL job
+2026-05-04 10:25:26 INFO [track_etl] Reading input: dataset/data
+2026-05-04 10:25:29 INFO [track_etl] Writing output to: processed_data
+2026-05-04 10:27:20 INFO [track_etl] ETL pipeline finished
+2026-05-04 10:27:20 INFO [track_etl] Building playlist-song interaction matrix...
+2026-05-04 10:28:46 INFO [track_etl] Saved interaction pairs to Parquet, building sparse matrix...
+2026-05-04 10:29:04 INFO [track_etl] Saved sparse matrix (1000000, 2261725) to processed_data\interaction_matrix.npz
+2026-05-04 10:29:04 INFO [track_etl] Completed building playlist-track interaction matrix
