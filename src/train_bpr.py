@@ -1,37 +1,31 @@
 """
-Bayesian Personalized Ranking (BPR) via vectorized mini-batch SGD.
-Subset: first 50K playlists (pure-numpy BPR on the full 1M dataset would take hours).
+Bayesian Personalized Ranking on the full 1M-playlist interaction matrix using the `implicit` library.
 """
 import time
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
+from implicit.bpr import BayesianPersonalizedRanking
 
 from src.utils.config import load_config
 from src.utils.logging import get_logger
 
 logger = get_logger("train_bpr")
 
-N_PLAYLISTS    = 50_000
-N_FACTORS      = 64
-N_EPOCHS       = 5
-SAMPLES_EPOCH  = 1_000_000
-BATCH_SIZE     = 10_000
-LR             = 0.05
-REG            = 0.01
+N_FACTORS = 64
+N_EPOCHS  = 5
+LR        = 0.05
+REG       = 0.01
 
 
 def run_bpr_training():
     config = load_config()
     processed_path = config.get("processed_data_path", "processed_data")
 
-    logger.info(f"Loading interaction pairs (first {N_PLAYLISTS} playlists)")
+    logger.info("Loading full interaction pairs")
     pdf = pd.read_parquet(f"{processed_path}/interaction_pairs")
-
-    top_playlists = np.sort(pdf["playlist_id"].unique())[:N_PLAYLISTS]
-    pdf = pdf[pdf["playlist_id"].isin(top_playlists)].copy()
 
     playlist_cat = pdf["playlist_id"].astype("category").cat
     track_cat    = pdf["track_id_int"].astype("category").cat
@@ -43,52 +37,27 @@ def run_bpr_training():
     n_users = int(user_ids.max()) + 1
     n_items = int(item_ids.max()) + 1
     logger.info(f"BPR problem: {n_users} playlists × {n_items} tracks, "
-                f"{N_FACTORS} factors, {N_EPOCHS} epochs × {SAMPLES_EPOCH} samples")
+                f"{N_FACTORS} factors, {N_EPOCHS} epochs")
 
-    # Build user→positive-items lookup (list per user for fast negative sampling)
-    user_pos_set  = defaultdict(set)
-    user_pos_list = defaultdict(list)
-    for u, i in zip(user_ids, item_ids):
-        user_pos_set[u].add(i)
-        user_pos_list[u].append(i)
+    data = np.ones(len(user_ids), dtype=np.float32)
+    R = csr_matrix((data, (user_ids, item_ids)), shape=(n_users, n_items))
 
-    rng = np.random.default_rng(42)
-    U = (rng.random((n_users, N_FACTORS)) - 0.5) * 0.01
-    V = (rng.random((n_items, N_FACTORS)) - 0.5) * 0.01
+    model = BayesianPersonalizedRanking(
+        factors=N_FACTORS,
+        iterations=N_EPOCHS,
+        learning_rate=LR,
+        regularization=REG,
+        use_gpu=False,
+        random_state=42,
+    )
 
-    logger.info("Starting BPR mini-batch SGD")
+    logger.info("Starting BPR training")
     t0 = time.perf_counter()
-
-    for epoch in range(N_EPOCHS):
-        n_batches = SAMPLES_EPOCH // BATCH_SIZE
-        for _ in range(n_batches):
-            # Sample users (only those with interactions)
-            active_users = np.array(list(user_pos_set.keys()))
-            bu = rng.choice(active_users, size=BATCH_SIZE)
-
-            # Positive items: one random positive per sampled user
-            bi = np.array([user_pos_list[u][rng.integers(len(user_pos_list[u]))] for u in bu])
-
-            # Negative items: random, re-sample if accidentally positive
-            bj = rng.integers(0, n_items, size=BATCH_SIZE)
-
-            # Vectorized BPR gradient
-            diff = V[bi] - V[bj]                              # (B, F)
-            x_uij = np.sum(U[bu] * diff, axis=1)              # (B,)
-            grad  = 1.0 / (1.0 + np.exp(x_uij))               # (B,) sigmoid(-x)
-
-            gU = grad[:, None] * diff  - REG * U[bu]          # (B, F)
-            gVi = grad[:, None] * U[bu] - REG * V[bi]         # (B, F)
-            gVj = -grad[:, None] * U[bu] - REG * V[bj]        # (B, F)
-
-            np.add.at(U, bu, LR * gU)
-            np.add.at(V, bi, LR * gVi)
-            np.add.at(V, bj, LR * gVj)
-
-        logger.info(f"  Epoch {epoch + 1}/{N_EPOCHS} done")
-
+    model.fit(R)
     train_duration = time.perf_counter() - t0
     logger.info(f"BPR training completed in {train_duration:.2f} seconds")
+
+    V = model.item_factors
 
     # Inference: average seed embeddings, cosine search over V
     sample_playlist = pdf["playlist_id"].iloc[0]
