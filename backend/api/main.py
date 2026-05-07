@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,8 @@ logger = get_logger("api")
 
 _data: dict[str, pd.DataFrame] = {}
 
+_FALLBACK_PATH = Path(__file__).parent / "fallback_data.json"
+
 
 def _output_dir() -> Path:
     config = load_config()
@@ -25,6 +28,17 @@ def _load_parquet(path: Path) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
+def _load_fallback() -> None:
+    raw = json.loads(_FALLBACK_PATH.read_text())
+    _data["track_counts"] = pd.DataFrame(raw["track_counts"])
+    _data["artist_counts"] = pd.DataFrame(raw["artist_counts"])
+    _data["playlist_sizes"] = pd.DataFrame(raw["playlist_sizes"])
+    _data["tracks"] = _data["track_counts"][["track_uri", "track_name", "artist_name"]].copy()
+    _data["tracks"].insert(0, "playlist_id", 0)
+    _data["tracks"]["album_name"] = ""
+    logger.warning("ETL output not found — serving static fallback data")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     out = _output_dir()
@@ -34,8 +48,8 @@ async def lifespan(app: FastAPI):
         _data["artist_counts"] = _load_parquet(out / "stats" / "artist_counts.parquet")
         _data["playlist_sizes"] = _load_parquet(out / "stats" / "playlist_sizes.parquet")
         logger.info(f"Loaded output data from {out}")
-    except FileNotFoundError as e:
-        logger.warning(str(e))
+    except FileNotFoundError:
+        _load_fallback()
     yield
 
 

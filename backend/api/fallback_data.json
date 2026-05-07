@@ -1,0 +1,48 @@
+{
+  "track_counts": [
+    {"track_uri": "0vFabeTqtOtj918sjc5vYo", "track_name": "HUMBLE.", "artist_name": "Kendrick Lamar", "count": 15103},
+    {"track_uri": "7KXjTSCq5nL1LoYtL7XAwS", "track_name": "STARBOY", "artist_name": "The Weeknd", "count": 14812},
+    {"track_uri": "7qiZfU4dY1lWllzX7mPBI3", "track_name": "Shape of You", "artist_name": "Ed Sheeran", "count": 14204},
+    {"track_uri": "3DXncPQOG4VBw3QHh3S817", "track_name": "One Dance", "artist_name": "Drake", "count": 13997},
+    {"track_uri": "5ghIJDpPoe3CfHMGu71E6T", "track_name": "Broccoli (feat. Lil Yachty)", "artist_name": "DRAM", "count": 13540},
+    {"track_uri": "6b8Be6ljOzmkOmFslEb23P", "track_name": "Closer", "artist_name": "The Chainsmokers", "count": 13102},
+    {"track_uri": "1xznGGDReH1oQq0xzbwXa3", "track_name": "Location", "artist_name": "Khalid", "count": 12887},
+    {"track_uri": "5uCax9HTNlzGybIStD3vDh", "track_name": "XO TOUR Llif3", "artist_name": "Lil Uzi Vert", "count": 12654},
+    {"track_uri": "3ee8Jmje8o58CHK66QrVC2", "track_name": "Bad and Boujee (feat. Lil Uzi Vert)", "artist_name": "Migos", "count": 12401},
+    {"track_uri": "2xLMifQCjDGFmkHkpNLD9h", "track_name": "Congratulations", "artist_name": "Post Malone", "count": 12198},
+    {"track_uri": "4kflIRHO2IqJrEgzFqDz0x", "track_name": "iSpy (feat. Lil Yachty)", "artist_name": "KYLE", "count": 11944},
+    {"track_uri": "0tgVpDi06FyKpA1z0VMD4v", "track_name": "Despacito - Remix", "artist_name": "Luis Fonsi", "count": 11732},
+    {"track_uri": "7FbrGaHRBM0pxIhSov3FcO", "track_name": "Bank Account", "artist_name": "21 Savage", "count": 11503},
+    {"track_uri": "2dLLR6qlu5UJ5gk0dKIFHJ", "track_name": "T-Shirt", "artist_name": "Migos", "count": 11289},
+    {"track_uri": "5JCoSi02qi3jJeHdZCBOAi", "track_name": "Tunnel Vision", "artist_name": "Kodak Black", "count": 11077},
+    {"track_uri": "4iLqG9SeJSnt0cSPICSHgu", "track_name": "Mask Off", "artist_name": "Future", "count": 10854},
+    {"track_uri": "6RUKPb4LETWmmr3iAEQktW", "track_name": "Feel It Still", "artist_name": "Portugal. The Man", "count": 10623},
+    {"track_uri": "3hARkMlnSuEMPKPJleGpqQ", "track_name": "Redbone", "artist_name": "Childish Gambino", "count": 10411},
+    {"track_uri": "0sf12qNH5qcw8qpgymFOqT", "track_name": "Bounce Back", "artist_name": "Big Sean", "count": 10198},
+    {"track_uri": "7uoFMmxln0GPXQ0AcCBXRq", "track_name": "Unforgettable", "artist_name": "French Montana", "count": 9987}
+  ],
+  "artist_counts": [
+    {"artist_name": "Drake", "count": 91032},
+    {"artist_name": "Kendrick Lamar", "count": 74851},
+    {"artist_name": "The Weeknd", "count": 68204},
+    {"artist_name": "Future", "count": 61543},
+    {"artist_name": "Post Malone", "count": 57892},
+    {"artist_name": "Lil Uzi Vert", "count": 52341},
+    {"artist_name": "Migos", "count": 49872},
+    {"artist_name": "21 Savage", "count": 46103},
+    {"artist_name": "Ed Sheeran", "count": 43657},
+    {"artist_name": "Cardi B", "count": 40298}
+  ],
+  "playlist_sizes": [
+    {"playlist_id": 0, "track_count": 52},
+    {"playlist_id": 1, "track_count": 39},
+    {"playlist_id": 2, "track_count": 67},
+    {"playlist_id": 3, "track_count": 44},
+    {"playlist_id": 4, "track_count": 28},
+    {"playlist_id": 5, "track_count": 61},
+    {"playlist_id": 6, "track_count": 35},
+    {"playlist_id": 7, "track_count": 48},
+    {"playlist_id": 8, "track_count": 73},
+    {"playlist_id": 9, "track_count": 41}
+  ]
+}
