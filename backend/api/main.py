@@ -1,4 +1,5 @@
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -55,9 +56,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Playlist Recommendation API", lifespan=lifespan)
 
+_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    *(o for o in [os.environ.get("FRONTEND_URL")] if o),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

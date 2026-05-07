@@ -4,7 +4,7 @@ import StatCard from './components/StatCard'
 import TopTracks from './components/TopTracks'
 import TopArtists from './components/TopArtists'
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const API = import.meta.env.VITE_API_URL ?? ''
 
 export default function App() {
   const [stats, setStats] = useState(null)
