@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 def get_logger(name: str, log_file: str | None = None) -> logging.Logger:
     logger = logging.getLogger(name)

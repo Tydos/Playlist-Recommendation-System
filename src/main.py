@@ -1,4 +1,3 @@
-import os
 from src.utils.logging import get_logger
 from src.utils.config import load_config
 from src.track_etl import run_full_etl

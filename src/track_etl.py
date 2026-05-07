@@ -1,5 +1,7 @@
-from typing import Union, List
+from typing import Union, List, Iterator, Dict, Any
 import os
+import json
+from pathlib import Path
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import col, regexp_replace, hash, explode
 from src.utils.schema import get_track_schema
@@ -12,7 +14,49 @@ import pandas as pd
 # Logger for tracking ETL progress and errors
 logger = get_logger("track_etl")
 
-def extract_tracks(spark, input_path: Union[str, List[str]]) -> DataFrame:
+def extract_tracks(file_path: str) -> Iterator[Dict[str, Any]]:
+    """Yield one dict per track from a single Spotify MPD JSON slice (no Spark)."""
+    with open(file_path, encoding="utf-8") as f:
+        data = json.load(f)
+    for playlist_id, playlist in enumerate(data.get("playlists", [])):
+        for track in playlist.get("tracks", []):
+            yield {
+                "playlist_id": playlist_id,
+                "track_uri": track.get("track_uri", ""),
+                "artist_name": track.get("artist_name", ""),
+                "track_name": track.get("track_name", ""),
+                "album_name": track.get("album_name", ""),
+                "album_uri": track.get("album_uri", ""),
+            }
+
+
+def transform_track(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Strip Spotify URI prefixes from track_uri and album_uri in a single record dict."""
+    result = dict(record)
+    for key, prefix in (("track_uri", "spotify:track:"), ("album_uri", "spotify:album:")):
+        val = result.get(key, "")
+        if val.startswith(prefix):
+            result[key] = val[len(prefix):]
+    return result
+
+
+def load_tracks(file_path: str, output_dir: str) -> int:
+    """
+    Read a single JSON slice, transform each track, and write a Parquet file.
+
+    Returns the number of tracks written (0 if the slice had no tracks).
+    """
+    rows = [transform_track(r) for r in extract_tracks(file_path)]
+    if not rows:
+        return 0
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    stem = Path(file_path).stem
+    out_path = Path(output_dir) / f"{stem}.parquet"
+    pd.DataFrame(rows).to_parquet(str(out_path), index=False)
+    return len(rows)
+
+
+def spark_extract_tracks(spark, input_path: Union[str, List[str]]) -> DataFrame:
     """
     Extract raw track data from JSON files into a Spark DataFrame.
 
@@ -69,18 +113,9 @@ def transform_tracks(df: DataFrame) -> DataFrame:
     return df_encoded
 
 
-def load_tracks(df: DataFrame, output_path: str, partitions: int = 8) -> None:
-    """
-    Write the transformed track DataFrame to Parquet files.
-
-    Args:
-        df: Transformed track DataFrame.
-        output_path: Directory path for Parquet output.
-        partitions: Number of partitions to coalesce into to control number of output files.
-    """
+def spark_load_tracks(df: DataFrame, output_path: str, partitions: int = 8) -> None:
+    """Write the transformed Spark DataFrame to Parquet files."""
     logger.info(f"Writing output to: {output_path}")
-
-    # Coalesce reduces the number of output files (avoids many small Parquet files)
     df.coalesce(partitions) \
       .write \
       .mode("overwrite")  \
@@ -148,7 +183,7 @@ def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_record
         os.makedirs(output_path, exist_ok=True)
 
     # Step 1: Extract
-    df = extract_tracks(spark, input_path)
+    df = spark_extract_tracks(spark, input_path)
     if num_records:
         logger.info(f"Limiting to {num_records} records")
         df = df.limit(num_records)
@@ -157,7 +192,7 @@ def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_record
     df_transformed = transform_tracks(df)
 
     # Step 3: Load
-    load_tracks(df_transformed, output_path)
+    spark_load_tracks(df_transformed, output_path)
 
     logger.info("ETL pipeline finished")
     
