@@ -16,13 +16,13 @@ def get_logger(name: str, log_file: str | None = None) -> logging.Logger:
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        # File Handler 
-        log_dir = Path(__file__).parent.parent / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{log_file}.log" if log_file else f"{name}.log"
+        # # File Handler 
+        # log_dir = Path(__file__).parent.parent / "logs"
+        # log_dir.mkdir(parents=True, exist_ok=True)
+        # filename = f"{log_file}.log" if log_file else f"{name}.log"
         
-        file_handler = logging.FileHandler(log_dir / filename, mode='a')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        # file_handler = logging.FileHandler(log_dir / filename, mode='a')
+        # file_handler.setFormatter(formatter)
+        # logger.addHandler(file_handler)
 
     return logger

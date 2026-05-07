@@ -4,7 +4,7 @@ from src.utils.logging import get_logger
 
 logger = get_logger("config")
 
-CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
+CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def load_config(config_path: Path = CONFIG_PATH) -> dict:
     """Load YAML configuration file."""

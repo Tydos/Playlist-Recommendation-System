@@ -1,6 +1,6 @@
 __pycache__
 venv
-data/
+dataset/
 .ruff_cache
 .pytest_cache
 processed_data/

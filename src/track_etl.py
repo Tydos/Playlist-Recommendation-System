@@ -130,13 +130,14 @@ def build_playlist_track_matrix(df: DataFrame, output_path: str) -> None:
     logger.info(f"Saved sparse matrix {matrix.shape} to {matrix_path}")
 
 
-def run_full_etl(input_path: Union[str, List[str]], output_path: str) -> None:
+def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_records: int = None) -> None:
     """
     Orchestrate the full ETL process: extract, transform, and load.
 
     Args:
         input_path: Path(s) to raw JSON files.
         output_path: Path to store cleaned Parquet files.
+        num_records: If set, limit the number of raw records processed.
     """
     # Initialize Spark session
     spark = spark_session()
@@ -148,6 +149,9 @@ def run_full_etl(input_path: Union[str, List[str]], output_path: str) -> None:
 
     # Step 1: Extract
     df = extract_tracks(spark, input_path)
+    if num_records:
+        logger.info(f"Limiting to {num_records} records")
+        df = df.limit(num_records)
 
     # Step 2: Transform
     df_transformed = transform_tracks(df)
