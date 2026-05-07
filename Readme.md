@@ -98,9 +98,20 @@ Shows four stat cards (unique tracks, artists, playlists, avg playlist size), a 
 
 ## Setup
 
+**API only** (no ETL, no PySpark):
+
+```bash
+pip install -r backend/api/requirements.txt
+uvicorn backend.api.main:app --reload
+```
+
+**Full local dev** (ETL + API):
+
 ```bash
 pip install -r requirements.txt
 ```
+
+> Requires Java 8+ and Hadoop `winutils` on Windows for PySpark. See `hadoop/` directory.
 
 ---
 

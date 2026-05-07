@@ -2,10 +2,7 @@
   "builds": [
     {
       "src": "backend/api/main.py",
-      "use": "@vercel/python",
-      "config": {
-        "requirementsFile": "backend/api/requirements-prod.txt"
-      }
+      "use": "@vercel/python"
     },
     {
       "src": "frontend/package.json",

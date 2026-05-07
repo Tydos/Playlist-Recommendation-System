@@ -1,32 +1,16 @@
-# YAML config support
+
+# api
+fastapi
+uvicorn
+pandas
+pyarrow
 pyyaml
 
-#linter
-ruff
-pytest
-
-#streaming
-ijson
-pyarrow
-fastparquet
-
-#notebook 
-ipykernel
-pandas
-matplotlib
-seaborn
-scikit-learn
-
-#api
-fastapi
-uvicorn 
-httpx
-
-#hash functions
-xxhash
-
+# etl
 pyspark
+scipy
+numpy
 
-#model comparison
-implicit
-gensim
+# dev
+pytest
+ruff
