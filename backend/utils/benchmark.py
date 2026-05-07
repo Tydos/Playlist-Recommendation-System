@@ -1,13 +1,10 @@
 import time
-from src.utils.logging import get_logger
+from backend.utils.logging import get_logger
 
 logger = get_logger("benchmark")
 
 def benchmark(func, *args, **kwargs):
-    """
-    Generic benchmark wrapper.
-    Returns (success, duration_seconds).
-    """
+    """Returns (success, duration_seconds)."""
     t0 = time.perf_counter()
     try:
         func(*args, **kwargs)
@@ -17,4 +14,3 @@ def benchmark(func, *args, **kwargs):
         success = False
     t1 = time.perf_counter()
     return success, t1 - t0
-

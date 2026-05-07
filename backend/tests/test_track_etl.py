@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.track_etl import extract_tracks, transform_track, load_tracks
+from backend.etl.track_etl import extract_tracks, transform_track, load_tracks
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -25,6 +25,7 @@ def test_extract_tracks_outputs_expected_fields(tmp_path):
                             "track_name": "Song A",
                             "album_name": "Album A",
                             "album_uri": "spotify:album:aaa",
+                            "artist_uri": "spotify:artist:111a",
                         }
                     ]
                 },
@@ -36,6 +37,7 @@ def test_extract_tracks_outputs_expected_fields(tmp_path):
                             "track_name": "Song B",
                             "album_name": "Album B",
                             "album_uri": "spotify:album:bbb",
+                            "artist_uri": "spotify:artist:222b",
                         }
                     ]
                 },
@@ -51,36 +53,39 @@ def test_extract_tracks_outputs_expected_fields(tmp_path):
     assert rows[0]["track_name"] == "Song A"
     assert rows[0]["album_name"] == "Album A"
     assert rows[0]["album_uri"] == "spotify:album:aaa"
+    assert rows[0]["artist_uri"] == "spotify:artist:111a"
     assert rows[1]["playlist_id"] == 1
     assert rows[1]["track_uri"] == "spotify:track:222"
 
 
-def test_transform_track_strips_prefixes_and_handles_empty():
-    transformed = transform_track(
-        {
-            "track_uri": "spotify:track:xyz",
-            "album_uri": "spotify:album:abc",
-            "track_name": "T",
-            "album_name": "A",
-            "artist_name": "R",
-        }
-    )
+def test_transform_track_strips_all_prefixes():
+    record = {
+        "track_uri": "spotify:track:xyz",
+        "album_uri": "spotify:album:abc",
+        "artist_uri": "spotify:artist:zzz",
+        "track_name": "T",
+        "album_name": "A",
+        "artist_name": "R",
+    }
+    result = transform_track(record)
+    assert result["track_uri"] == "xyz"
+    assert result["album_uri"] == "abc"
+    assert result["artist_uri"] == "zzz"
 
-    assert transformed["track_uri"] == "xyz"
-    assert transformed["album_uri"] == "abc"
 
-    transformed_empty = transform_track(
-        {
-            "track_uri": "",
-            "album_uri": "",
-            "track_name": "",
-            "album_name": "",
-            "artist_name": "",
-        }
-    )
-
-    assert transformed_empty["track_uri"] == ""
-    assert transformed_empty["album_uri"] == ""
+def test_transform_track_handles_empty_uris():
+    record = {
+        "track_uri": "",
+        "album_uri": "",
+        "artist_uri": "",
+        "track_name": "",
+        "album_name": "",
+        "artist_name": "",
+    }
+    result = transform_track(record)
+    assert result["track_uri"] == ""
+    assert result["album_uri"] == ""
+    assert result["artist_uri"] == ""
 
 
 def test_load_tracks_creates_dir_and_writes_parquet(monkeypatch, tmp_path):
@@ -97,6 +102,7 @@ def test_load_tracks_creates_dir_and_writes_parquet(monkeypatch, tmp_path):
                             "track_name": "Track1",
                             "album_name": "Album1",
                             "album_uri": "spotify:album:abc",
+                            "artist_uri": "spotify:artist:a1",
                         },
                         {
                             "track_uri": "spotify:track:456",
@@ -104,6 +110,7 @@ def test_load_tracks_creates_dir_and_writes_parquet(monkeypatch, tmp_path):
                             "track_name": "Track2",
                             "album_name": "Album2",
                             "album_uri": "spotify:album:def",
+                            "artist_uri": "spotify:artist:a2",
                         },
                     ]
                 }
@@ -129,6 +136,7 @@ def test_load_tracks_creates_dir_and_writes_parquet(monkeypatch, tmp_path):
     assert captured["index"] is False
     assert captured["df"].iloc[0]["track_uri"] == "123"
     assert captured["df"].iloc[0]["album_uri"] == "abc"
+    assert captured["df"].iloc[0]["artist_uri"] == "a1"
 
 
 def test_load_tracks_returns_zero_when_no_tracks(monkeypatch, tmp_path):

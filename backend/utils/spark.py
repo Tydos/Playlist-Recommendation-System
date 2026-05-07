@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from pyspark.sql import SparkSession
-from src.utils.config import load_config
+from backend.utils.config import load_config
 
 # temp workaround for windows
 def _windows_hadoop_jvm_opts() -> str:

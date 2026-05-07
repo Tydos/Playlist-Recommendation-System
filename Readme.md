@@ -1,60 +1,111 @@
-# Spotify Song Recommendation Project
+# Collaborative Playlist Recommendation System
 
-## Project Description
+Processes the Spotify Million Playlist Dataset (MPD) through an Apache Spark ETL pipeline, then serves analytics and recommendation data via a FastAPI backend and a Vite React dashboard.
 
-This project processes the Spotify Million Playlist Dataset (MPD) and converts raw JSON playlist data into a clean, structured format suitable for downstream recommendation models and analytics.
+---
 
+## Project Structure
 
-## Dataset Description
+```
+backend/          Python package — ETL pipeline + FastAPI
+  etl/            Spark + pandas ETL logic
+  api/            FastAPI application
+  utils/          Shared config, logging, Spark session, schema
+  tests/          pytest test suite
+frontend/         Vite + React dashboard (Recharts)
+dataset/data/     MPD JSON slices (not tracked in git)
+output/           ETL outputs (not tracked in git)
+hadoop/           Windows winutils for local Spark (not tracked in git)
+```
 
-The dataset is stored as MPD JSON slices under [dataset/data](dataset/data), with each slice containing approximately 1000 playlists, for example [dataset/data/mpd.slice.0-999.json](dataset/data/mpd.slice.0-999.json). The project primarily uses playlist and track metadata fields such as `pid`, `track_uri`, `track_name`, `artist_name`, `album_name`, and `album_uri`.
+---
+
+## Dataset
+
+The [Spotify Million Playlist Dataset](https://www.aicrowd.com/challenges/spotify-millionsong-dataset-challenge) is stored as ~1000 JSON slices under `dataset/data/`, each containing 1000 playlists.
 
 ```json
 {
-	"playlists": [
-		{
-			"pid": 0,
-			"num_followers": 1,
-			"tracks": [
-				{
-					"track_uri": "spotify:track:...",
-					"track_name": "...",
-					"artist_name": "...",
-					"album_name": "...",
-					"album_uri": "spotify:album:..."
-				}
-			]
-		}
-	]
+  "playlists": [{
+    "pid": 0,
+    "tracks": [{
+      "track_uri": "spotify:track:...",
+      "track_name": "...",
+      "artist_name": "...",
+      "album_name": "...",
+      "album_uri": "spotify:album:...",
+      "artist_uri": "spotify:artist:..."
+    }]
+  }]
 }
 ```
 
-## Building the ETL pipeline
+---
 
-The initial ETL approach loaded JSON slices into memory and wrote flattened CSV output, which was simple but slow at scale. A better version used generators for streaming extraction, applies lightweight track normalization, and writes Parquet outputs for better I/O performance. The pipeline was then parallelized using `ProcessPoolExecutor` on MacBook M3 cores, reducing end-to-end ETL time from about 277 seconds to about 50 seconds while processing roughly 6 million tracks across 1 million playlists. The current pipeline usses Apache Spark.
+## ETL Pipeline
 
+Run once to populate `output/` before starting the API.
 
-## Data Cleaning / Preparation
+```bash
+python -m backend.run_etl
+```
 
-Cleaning includes safe JSON parsing, field selection, default handling for missing metadata, URI normalization by stripping Spotify prefixes, and Parquet output writing with automatic output-directory creation. The extracted dataset currently contains `playlist_id`, `track_uri`, `artist_name`, `track_name`, `album_name`, and `album_uri`.
+The pipeline reads all JSON slices with Spark, flattens nested playlists/tracks, strips Spotify URI prefixes, and writes four outputs:
 
+| File | Description |
+|------|-------------|
+| `output/tracks.parquet` | Flattened, cleaned track records |
+| `output/id_mappings.parquet` | Stable `track_uri → track_id` (contiguous ints for models) |
+| `output/stats/track_counts.parquet` | Track appearance frequency across playlists |
+| `output/stats/artist_counts.parquet` | Artist appearance frequency |
+| `output/stats/playlist_sizes.parquet` | Per-playlist track counts |
+| `output/interaction_matrix.npz` | Sparse playlist–track COO matrix for collaborative filtering |
 
-## General Code Running Guidelines
+ETL history: started as in-memory CSV, moved to streaming Parquet generators, parallelized with `ProcessPoolExecutor` (~277s → ~50s on M3), then migrated to Apache Spark.
 
-Install dependencies:
+---
+
+## Backend API
+
+```bash
+uvicorn backend.api.main:app --reload
+```
+
+Runs at `http://localhost:8000`. Loads output parquets at startup.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/stats?top_n=10` | Summary counts + top tracks and artists |
+| `GET /api/top-tracks?limit=20` | Ranked track list |
+| `GET /api/top-artists?limit=20` | Ranked artist list |
+| `GET /api/tracks?page=0&size=50` | Paginated full track table |
+
+Interactive docs: `http://localhost:8000/docs`
+
+---
+
+## Frontend Dashboard
+
+```bash
+cd frontend
+npm install      # first time only
+npm run dev      # → http://localhost:5173
+```
+
+Shows four stat cards (unique tracks, artists, playlists, avg playlist size), a top-tracks table, and a top-artists bar chart. Reads from the API at `http://localhost:8000`.
+
+---
+
+## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run ETL:
+---
+
+## Tests
 
 ```bash
-python -m src.track_etl
-```
-
-Run tests:
-
-```bash
-python -m pytest -q
+pytest -q
 ```

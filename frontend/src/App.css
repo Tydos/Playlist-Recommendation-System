@@ -1,0 +1,148 @@
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1db954, #17a349);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header p {
+  color: #888;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-card {
+  background: #f8f8fc;
+  border: 1px solid #e4e4f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.stat-card .label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.stat-card .value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1;
+}
+
+.stat-card .sub {
+  font-size: 0.78rem;
+  color: #1db954;
+  margin-top: 6px;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 900px) {
+  .charts-row { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: #f8f8fc;
+  border: 1px solid #e4e4f0;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.panel h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.track-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.track-table th {
+  text-align: left;
+  color: #aaa;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 8px 12px;
+  border-bottom: 1px solid #e4e4f0;
+}
+
+.track-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #ededf5;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.track-table tr:last-child td { border-bottom: none; }
+
+.rank { color: #ccc; width: 28px; font-variant-numeric: tabular-nums; }
+
+.count-badge {
+  display: inline-block;
+  background: #e8f5ed;
+  color: #1db954;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-box {
+  background: #fff5f5;
+  border: 1px solid #ffc0c0;
+  border-radius: 8px;
+  padding: 16px;
+  color: #c05050;
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+}
+
+.loading {
+  color: #bbb;
+  text-align: center;
+  padding: 64px;
+  font-size: 0.9rem;
+}

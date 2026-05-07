@@ -3,11 +3,11 @@ venv
 dataset/
 .ruff_cache
 .pytest_cache
-processed_data/
+output/
 .claude/
 hadoop/
-dataset/src/
-src/logs/
-src/__pycache__/
 *.log
 *.pkl
+frontend/node_modules/
+frontend/dist/
+frontend/.env
