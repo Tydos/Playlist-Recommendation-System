@@ -11,6 +11,10 @@ pyspark
 scipy
 numpy
 
+# blob storage
+boto3
+python-dotenv
+
 # dev
 pytest
 ruff

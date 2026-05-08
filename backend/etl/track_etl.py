@@ -7,6 +7,7 @@ from pyspark.sql.functions import col, regexp_replace, hash, explode
 from backend.utils.schema import get_track_schema
 from backend.utils.logging import get_logger
 from backend.utils.spark import spark_session
+from backend.utils.blob import upload_file, upload_dir
 from scipy.sparse import coo_matrix, save_npz
 import numpy as np
 import pandas as pd
@@ -110,8 +111,10 @@ def build_id_mappings(tracks_path: str, output_dir: str) -> pd.DataFrame:
     df = pd.read_parquet(tracks_path, columns=["track_uri", "track_name", "artist_name", "album_name"])
     unique_tracks = df.drop_duplicates("track_uri").reset_index(drop=True)
     unique_tracks["track_id"] = unique_tracks.index
-    unique_tracks.to_parquet(Path(output_dir) / "id_mappings.parquet", index=False)
+    local_path = Path(output_dir) / "id_mappings.parquet"
+    unique_tracks.to_parquet(local_path, index=False)
     logger.info(f"Saved {len(unique_tracks)} unique track mappings")
+    upload_file(str(local_path), "output/id_mappings.parquet")
     return unique_tracks
 
 
@@ -146,6 +149,30 @@ def build_stats(tracks_path: str, output_dir: str) -> None:
     playlist_sizes.to_parquet(stats_dir / "playlist_sizes.parquet", index=False)
 
     logger.info(f"Saved stats: {len(track_counts)} tracks, {len(artist_counts)} artists, {len(playlist_sizes)} playlists")
+    upload_dir(str(stats_dir), "output/stats")
+
+
+def build_stats_json(tracks_path: str, output_dir: str, top_n: int = 10) -> None:
+    """Write a stats.json (matching /api/stats shape) locally and upload to S3."""
+    stats_dir = Path(output_dir) / "stats"
+
+    track_counts = pd.read_parquet(stats_dir / "track_counts.parquet")
+    artist_counts = pd.read_parquet(stats_dir / "artist_counts.parquet")
+    playlist_sizes = pd.read_parquet(stats_dir / "playlist_sizes.parquet")
+
+    payload = {
+        "total_tracks": len(track_counts),
+        "total_artists": len(artist_counts),
+        "total_playlists": len(playlist_sizes),
+        "avg_playlist_size": round(float(playlist_sizes["track_count"].mean()), 1),
+        "top_tracks": track_counts.head(top_n)[["track_name", "artist_name", "count"]].to_dict(orient="records"),
+        "top_artists": artist_counts.head(top_n)[["artist_name", "count"]].to_dict(orient="records"),
+    }
+
+    local_path = Path(output_dir) / "stats.json"
+    local_path.write_text(__import__("json").dumps(payload))
+    logger.info(f"Saved stats.json to {local_path}")
+    upload_file(str(local_path), "output/stats.json")
 
 
 def build_playlist_track_matrix(tracks_path: str, id_mappings: pd.DataFrame, output_dir: str) -> None:
@@ -165,8 +192,10 @@ def build_playlist_track_matrix(tracks_path: str, id_mappings: pd.DataFrame, out
         shape=(int(playlist_codes.max()) + 1, n_tracks),
     )
 
-    save_npz(str(Path(output_dir) / "interaction_matrix.npz"), matrix)
+    local_path = Path(output_dir) / "interaction_matrix.npz"
+    save_npz(str(local_path), matrix)
     logger.info(f"Saved sparse matrix {matrix.shape} to {output_dir}/interaction_matrix.npz")
+    upload_file(str(local_path), "output/interaction_matrix.npz")
 
 
 def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_records: int = None) -> None:
@@ -186,8 +215,11 @@ def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_record
     spark_load_tracks(df_transformed, tracks_path)
     spark.stop()
 
+    upload_dir(tracks_path, "output/tracks.parquet")
+
     id_mappings = build_id_mappings(tracks_path, output_path)
     build_stats(tracks_path, output_path)
+    build_stats_json(tracks_path, output_path)
     build_playlist_track_matrix(tracks_path, id_mappings, output_path)
 
     logger.info("ETL pipeline finished")

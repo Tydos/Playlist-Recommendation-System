@@ -3,21 +3,38 @@ import './App.css'
 import StatCard from './components/StatCard'
 import TopTracks from './components/TopTracks'
 import TopArtists from './components/TopArtists'
+import fallbackStats from './fallbackStats'
 
 const API = import.meta.env.VITE_API_URL ?? ''
+const S3_STATS_URL = import.meta.env.VITE_S3_STATS_URL ?? ''
+
+async function fetchStats() {
+  if (API) {
+    try {
+      const r = await fetch(`${API}/api/stats?top_n=10`)
+      if (r.ok) return { data: await r.json(), source: 'api' }
+    } catch {}
+  }
+
+  if (S3_STATS_URL) {
+    try {
+      const r = await fetch(S3_STATS_URL)
+      if (r.ok) return { data: await r.json(), source: 's3' }
+    } catch {}
+  }
+
+  return { data: fallbackStats, source: 'fallback' }
+}
 
 export default function App() {
   const [stats, setStats] = useState(null)
-  const [error, setError] = useState(null)
+  const [source, setSource] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/api/stats?top_n=10`)
-      .then(r => {
-        if (!r.ok) throw new Error(`API returned ${r.status}`)
-        return r.json()
-      })
-      .then(setStats)
-      .catch(e => setError(e.message))
+    fetchStats().then(({ data, source }) => {
+      setStats(data)
+      setSource(source)
+    })
   }, [])
 
   return (
@@ -27,14 +44,13 @@ export default function App() {
         <p>Spotify Million Playlist Dataset — track &amp; artist analytics</p>
       </div>
 
-      {error && (
+      {source === 'fallback' && (
         <div className="error-box">
-          Could not reach API: {error}. Start the backend with{' '}
-          <code>uvicorn backend.api.main:app --reload</code>.
+          Live data unavailable — showing sample data. Run the ETL and start the backend to see real results.
         </div>
       )}
 
-      {!stats && !error && <div className="loading">Loading data…</div>}
+      {!stats && <div className="loading">Loading data…</div>}
 
       {stats && (
         <>
