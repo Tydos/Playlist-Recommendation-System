@@ -2,9 +2,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
-import pytest
 from scipy.sparse import load_npz
 
 from backend.etl.track_etl import (

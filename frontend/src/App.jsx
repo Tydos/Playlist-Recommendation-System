@@ -26,6 +26,11 @@ async function fetchStats() {
   return { data: fallbackStats, source: 'fallback' }
 }
 
+const SOURCE_LABELS = {
+  api:      { label: 'Live API',    className: 'live' },
+  fallback: { label: 'Sample Data', className: 'fallback' },
+}
+
 export default function App() {
   const [stats, setStats] = useState(null)
   const [source, setSource] = useState(null)
@@ -37,20 +42,37 @@ export default function App() {
     })
   }, [])
 
+  const badge = source ? SOURCE_LABELS[source] : null
+
   return (
     <div className="app">
-      <div className="header">
-        <h1>Collaborative Playlist Dashboard</h1>
-        <p>Spotify Million Playlist Dataset — track &amp; artist analytics</p>
-      </div>
+      <header className="header">
+        <div>
+          <h1>Playlist Dashboard</h1>
+          <p>Spotify Million Playlist Dataset: track and artist analytics</p>
+        </div>
+
+        {badge && (
+          <div className={`source-badge ${badge.className}`}>
+            <span className="dot" />
+            {badge.label}
+          </div>
+        )}
+      </header>
 
       {source === 'fallback' && (
-        <div className="error-box">
-          Live data unavailable — showing sample data. Run the ETL and start the backend to see real results.
+        <div className="warning-banner">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          Live data unavailable; showing sample data. Run the ETL and start the backend to see real results.
         </div>
       )}
 
-      {!stats && <div className="loading">Loading data…</div>}
+      {!stats && (
+        <div className="loading-wrap">
+          <div className="loading-spinner" />
+          <p className="loading-text">Loading pipeline output...</p>
+        </div>
+      )}
 
       {stats && (
         <>
@@ -64,16 +86,19 @@ export default function App() {
               label="Artists"
               value={stats.total_artists.toLocaleString()}
               sub="unique artists"
+              accent="purple"
             />
             <StatCard
               label="Playlists"
               value={stats.total_playlists.toLocaleString()}
               sub="in dataset"
+              accent="blue"
             />
             <StatCard
               label="Avg Playlist Size"
               value={stats.avg_playlist_size}
               sub="tracks per playlist"
+              accent="orange"
             />
           </div>
 
