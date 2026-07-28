@@ -1,0 +1,107 @@
+{
+  "info": {
+    "generated_on": "2026-07-28",
+    "slice": "mpd.example.json",
+    "version": "example-v1"
+  },
+  "playlists": [
+    {
+      "name": "Throwback Party",
+      "pid": 0,
+      "tracks": [
+        {
+          "track_uri": "spotify:track:1301WleyT98MSxVHPZCA6M",
+          "artist_name": "Kendrick Lamar",
+          "track_name": "HUMBLE.",
+          "album_name": "DAMN.",
+          "album_uri": "spotify:album:4eLPsYPBmXABThSJ821sqY",
+          "artist_uri": "spotify:artist:2YZyLoL8N0Wb9xBt1NhZWg"
+        },
+        {
+          "track_uri": "spotify:track:7BKLCZ1jbUBVqRi2FVlTVw",
+          "artist_name": "The Chainsmokers",
+          "track_name": "Closer",
+          "album_name": "Collage EP",
+          "album_uri": "spotify:album:6kZ42qRrzov54Georj0e46",
+          "artist_uri": "spotify:artist:69GGBxA162lTqCwzJG5jLp"
+        },
+        {
+          "track_uri": "spotify:track:7qiZfU4dY1lWllzX7mPBI3",
+          "artist_name": "Ed Sheeran",
+          "track_name": "Shape of You",
+          "album_name": "÷ (Deluxe)",
+          "album_uri": "spotify:album:3T4tUhGYeRNVUGevb0wThu",
+          "artist_uri": "spotify:artist:6eUKZXaKkcviH0Ku9w2n3V"
+        }
+      ]
+    },
+    {
+      "name": "Late Night Drive",
+      "pid": 1,
+      "tracks": [
+        {
+          "track_uri": "spotify:track:1xzi1Jsm7cg7NUprBd0Wtx",
+          "artist_name": "The Weeknd",
+          "track_name": "Starboy",
+          "album_name": "Starboy",
+          "album_uri": "spotify:album:2ODvWsOgouMbaA5xf0RkJe",
+          "artist_uri": "spotify:artist:1Xyo4u8uXC1ZmMpatF05PJ"
+        },
+        {
+          "track_uri": "spotify:track:0wwPcA6wtMf6HUMpIRdeP7",
+          "artist_name": "Drake",
+          "track_name": "One Dance",
+          "album_name": "Views",
+          "album_uri": "spotify:album:3hIeYuxT5oIfPPGpi7CJ4A",
+          "artist_uri": "spotify:artist:3TVXtAsR1Inumwj472S9r4"
+        },
+        {
+          "track_uri": "spotify:track:1301WleyT98MSxVHPZCA6M",
+          "artist_name": "Kendrick Lamar",
+          "track_name": "HUMBLE.",
+          "album_name": "DAMN.",
+          "album_uri": "spotify:album:4eLPsYPBmXABThSJ821sqY",
+          "artist_uri": "spotify:artist:2YZyLoL8N0Wb9xBt1NhZWg"
+        },
+        {
+          "track_uri": "spotify:track:0IktbUcnAGrvD03AWnz3Q8",
+          "artist_name": "Khalid",
+          "track_name": "Location",
+          "album_name": "American Teen",
+          "album_uri": "spotify:album:2Uoy0qEmljF6UW1LTvGxN2",
+          "artist_uri": "spotify:artist:6LuN9FCkKOj5PcnpouEgny"
+        }
+      ]
+    },
+    {
+      "name": "Workout Mix",
+      "pid": 2,
+      "tracks": [
+        {
+          "track_uri": "spotify:track:0wwPcA6wtMf6HUMpIRdeP7",
+          "artist_name": "Drake",
+          "track_name": "One Dance",
+          "album_name": "Views",
+          "album_uri": "spotify:album:3hIeYuxT5oIfPPGpi7CJ4A",
+          "artist_uri": "spotify:artist:3TVXtAsR1Inumwj472S9r4"
+        },
+        {
+          "track_uri": "spotify:track:7qiZfU4dY1lWllzX7mPBI3",
+          "artist_name": "Ed Sheeran",
+          "track_name": "Shape of You",
+          "album_name": "÷ (Deluxe)",
+          "album_uri": "spotify:album:3T4tUhGYeRNVUGevb0wThu",
+          "artist_uri": "spotify:artist:6eUKZXaKkcviH0Ku9w2n3V"
+        },
+        {
+          "track_uri": "spotify:track:3CRDbSIZ4r5MsezKy1uqU5",
+          "artist_name": "DRAM",
+          "track_name": "Broccoli (feat. Lil Yachty)",
+          "album_name": "Big Baby DRAM",
+          "album_uri": "spotify:album:5vTtL0nuqoItcuAV2XLR9M",
+          "artist_uri": "spotify:artist:5ZQOG0uxDNVAOZm9zt2Owx"
+        }
+      ]
+    }
+  ]
+}

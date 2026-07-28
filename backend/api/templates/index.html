@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playlist Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div>
+        <h1>Playlist Dashboard</h1>
+        <p>Spotify Million Playlist Dataset: track and artist analytics</p>
+      </div>
+
+      {% if loaded %}
+      <div class="source-badge live">
+        <span class="dot"></span>
+        Live Data
+      </div>
+      {% endif %}
+    </header>
+
+    {% if not loaded %}
+    <div class="warning-banner">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      ETL output not found. Run <code>python -m backend.run_etl</code> then reload this page.
+    </div>
+    {% else %}
+    <div class="stat-grid">
+      <div class="stat-card" style="--card-bg: oklch(96% 0.018 265); --card-border: oklch(87% 0.032 265); --value-color: oklch(33% 0.092 265)">
+        <div class="value">{{ '{:,}'.format(stats.total_tracks) }}</div>
+        <div class="label">Unique Tracks</div>
+        <div class="sub">distinct track URIs</div>
+      </div>
+      <div class="stat-card" style="--card-bg: oklch(94.5% 0.024 265); --card-border: oklch(85% 0.042 265); --value-color: oklch(29% 0.078 265)">
+        <div class="value">{{ '{:,}'.format(stats.total_artists) }}</div>
+        <div class="label">Artists</div>
+        <div class="sub">unique artists</div>
+      </div>
+      <div class="stat-card" style="--card-bg: oklch(95.5% 0.020 265); --card-border: oklch(86% 0.036 265); --value-color: oklch(37% 0.085 265)">
+        <div class="value">{{ '{:,}'.format(stats.total_playlists) }}</div>
+        <div class="label">Playlists</div>
+        <div class="sub">in dataset</div>
+      </div>
+      <div class="stat-card" style="--card-bg: oklch(96.5% 0.014 265); --card-border: oklch(88% 0.024 265); --value-color: oklch(42% 0.065 265)">
+        <div class="value">{{ stats.avg_playlist_size }}</div>
+        <div class="label">Avg Playlist Size</div>
+        <div class="sub">tracks per playlist</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Top Tracks</span>
+          <span class="panel-count">{{ stats.top_tracks|length }} tracks</span>
+        </div>
+        {% if stats.top_tracks %}
+        <ol class="track-list" aria-label="Top tracks by playlist appearances">
+          {% set max_count = stats.top_tracks[0].count %}
+          {% for t in stats.top_tracks %}
+          <li class="track-item" style="--bar-pct: {{ t.count / max_count }}; --bar-delay: {{ loop.index0 * 45 }}ms">
+            <div class="track-bar" aria-hidden="true"></div>
+            <span class="track-rank {{ 'gold' if loop.index0 == 0 else 'silver' if loop.index0 == 1 else 'bronze' if loop.index0 == 2 else '' }}" aria-label="Rank {{ loop.index }}">{{ loop.index }}</span>
+            <div class="track-info">
+              <div class="track-name" title="{{ t.track_name }}">{{ t.track_name }}</div>
+              <div class="track-artist" title="{{ t.artist_name }}">{{ t.artist_name }}</div>
+            </div>
+            <span class="count-badge">{{ '{:,}'.format(t.count) }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="panel-empty">No track data available.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Top Artists</span>
+          <span class="panel-count">{{ stats.top_artists|length }} artists</span>
+        </div>
+        {% if stats.top_artists %}
+        <ol class="track-list" aria-label="Top artists by playlist appearances">
+          {% set max_count = stats.top_artists[0].count %}
+          {% for a in stats.top_artists %}
+          <li class="track-item" style="--bar-pct: {{ a.count / max_count }}; --bar-delay: {{ loop.index0 * 45 }}ms">
+            <div class="track-bar" aria-hidden="true"></div>
+            <span class="track-rank {{ 'gold' if loop.index0 == 0 else 'silver' if loop.index0 == 1 else 'bronze' if loop.index0 == 2 else '' }}" aria-label="Rank {{ loop.index }}">{{ loop.index }}</span>
+            <div class="track-info">
+              <div class="track-name" title="{{ a.artist_name }}">{{ a.artist_name }}</div>
+            </div>
+            <span class="count-badge">{{ '{:,}'.format(a.count) }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="panel-empty">No artist data available.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

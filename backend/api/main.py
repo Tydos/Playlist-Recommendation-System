@@ -1,11 +1,12 @@
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from backend.utils.config import load_config
 from backend.utils.logging import get_logger
@@ -13,6 +14,8 @@ from backend.utils.logging import get_logger
 logger = get_logger("api")
 
 _data: dict[str, pd.DataFrame] = {}
+_API_DIR = Path(__file__).parent
+templates = Jinja2Templates(directory=str(_API_DIR / "templates"))
 
 def _output_dir() -> Path:
     config = load_config()
@@ -39,20 +42,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Playlist Recommendation API", lifespan=lifespan)
-
-_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    *(o for o in [os.environ.get("FRONTEND_URL")] if o),
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="Playlist Recommendation System", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(_API_DIR / "static")), name="static")
 
 
 def _require(key: str) -> pd.DataFrame:
@@ -61,8 +52,7 @@ def _require(key: str) -> pd.DataFrame:
     return _data[key]
 
 
-@app.get("/api/stats")
-def get_stats(top_n: int = Query(10, ge=1, le=100)) -> dict[str, Any]:
+def _build_stats(top_n: int = 10) -> dict[str, Any]:
     track_counts = _require("track_counts")
     artist_counts = _require("artist_counts")
     playlist_sizes = _require("playlist_sizes")
@@ -84,6 +74,20 @@ def get_stats(top_n: int = Query(10, ge=1, le=100)) -> dict[str, Any]:
         "top_tracks": top_tracks,
         "top_artists": top_artists,
     }
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard(request: Request):
+    loaded = "track_counts" in _data and "artist_counts" in _data and "playlist_sizes" in _data
+    stats = _build_stats(top_n=10) if loaded else None
+    return templates.TemplateResponse(
+        request, "index.html", {"loaded": loaded, "stats": stats}
+    )
+
+
+@app.get("/api/stats")
+def get_stats(top_n: int = Query(10, ge=1, le=100)) -> dict[str, Any]:
+    return _build_stats(top_n=top_n)
 
 
 @app.get("/api/top-tracks")

@@ -1,6 +1,7 @@
 __pycache__
 venv
-dataset/
+dataset/*
+!dataset/mpd.example.json
 .ruff_cache
 .pytest_cache
 output/
@@ -8,8 +9,6 @@ output/
 hadoop/
 *.log
 *.pkl
-frontend/node_modules/
-frontend/dist/
 .env
 .agents/
 CLAUDE.md

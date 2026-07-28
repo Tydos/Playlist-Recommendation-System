@@ -2,6 +2,7 @@
 # api
 fastapi
 uvicorn
+jinja2
 pandas
 pyarrow
 pyyaml

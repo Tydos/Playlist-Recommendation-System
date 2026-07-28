@@ -1,11 +1,11 @@
 # Spotify Song Recommendation Project Configuration
 
 #data paths
-dataset_path: "dataset/data"
+dataset_path: "dataset/mpd.example.json" # test dataset
 output_path: "output"
 
 #data sampling
-num_json: 1  # set to an integer to limit JSON slices processed (e.g. 100); null processes all
+num_json: null  # set to an integer to limit JSON slices processed (e.g. 100); null processes all
 
 #spark config
 spark_driver_memory: "4g"
