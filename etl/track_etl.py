@@ -1,64 +1,19 @@
-from typing import Union, List, Iterator, Dict, Any
+from typing import Union, List
 import os
 import json
 from pathlib import Path
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import col, regexp_replace, hash, explode
-from backend.utils.schema import get_track_schema
-from backend.utils.logging import get_logger
-from backend.utils.spark import spark_session
-from backend.utils.blob import upload_file, upload_dir
+from pyspark.sql.functions import col, regexp_replace, hash, explode, input_file_name, dense_rank
+from pyspark.sql.window import Window
+from utils.schema import get_track_schema
+from utils.logging import get_logger
+from utils.spark import spark_session
+from utils.blob import upload_file, upload_dir
 from scipy.sparse import coo_matrix, save_npz
 import numpy as np
 import pandas as pd
 
 logger = get_logger("track_etl")
-
-def extract_tracks(file_path: str) -> Iterator[Dict[str, Any]]:
-    """Yield one dict per track from a single Spotify MPD JSON slice (no Spark)."""
-    with open(file_path, encoding="utf-8") as f:
-        data = json.load(f)
-    for playlist_id, playlist in enumerate(data.get("playlists", [])):
-        for track in playlist.get("tracks", []):
-            yield {
-                "playlist_id": playlist_id,
-                "track_uri": track.get("track_uri", ""),
-                "artist_name": track.get("artist_name", ""),
-                "track_name": track.get("track_name", ""),
-                "album_name": track.get("album_name", ""),
-                "album_uri": track.get("album_uri", ""),
-                "artist_uri": track.get("artist_uri", ""),
-            }
-
-
-def transform_track(record: Dict[str, Any]) -> Dict[str, Any]:
-    """Strip Spotify URI prefixes from track_uri, album_uri, and artist_uri."""
-    record = dict(record)
-    for key, prefix in (
-        ("track_uri", "spotify:track:"),
-        ("album_uri", "spotify:album:"),
-        ("artist_uri", "spotify:artist:"),
-    ):
-        val = record.get(key, "")
-        if val.startswith(prefix):
-            record[key] = val[len(prefix):]
-    return record
-
-
-def load_tracks(file_path: str, output_dir: str) -> int:
-    """Read a single JSON slice, transform each track, and write a Parquet file.
-
-    Returns the number of tracks written (0 if the slice had no tracks).
-    """
-    rows = [transform_track(r) for r in extract_tracks(file_path)]
-    if not rows:
-        return 0
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    stem = Path(file_path).stem
-    out_path = Path(output_dir) / f"{stem}.parquet"
-    pd.DataFrame(rows).to_parquet(out_path, index=False)
-    return len(rows)
-
 
 def spark_extract_tracks(spark, input_path: Union[str, List[str]]) -> DataFrame:
     """Extract raw track data from JSON files into a Spark DataFrame."""
@@ -72,13 +27,31 @@ def spark_extract_tracks(spark, input_path: Union[str, List[str]]) -> DataFrame:
 
 
 def transform_tracks(df: DataFrame) -> DataFrame:
-    """Flatten playlists and tracks, clean URIs, and encode track_uri to numeric IDs."""
-    df_flat = df.select(
-        explode("playlists").alias("playlist")
+    """Flatten playlists and tracks, clean URIs, and encode track_uri to numeric IDs.
+     Assign a (slice_id, pid) pair to each playlist to identify the source slice.
+     """
+    df_playlists = df.select(
+        input_file_name().alias("slice_id"),
+        explode("playlists").alias("playlist"),
     ).select(
-        col("playlist.pid").alias("playlist_id"),
-        explode("playlist.tracks").alias("track")
+        col("slice_id"),
+        col("playlist.pid").alias("pid"),
+        col("playlist.tracks").alias("tracks"),
+    )
+
+    unique_playlists = df_playlists.select("slice_id", "pid").distinct()
+    window = Window.orderBy("slice_id", "pid")
+    unique_playlists = unique_playlists.withColumn("playlist_id", dense_rank().over(window) - 1)
+    df_playlists = df_playlists.join(unique_playlists, on=["slice_id", "pid"], how="inner")
+
+    df_flat = df_playlists.select(
+        col("slice_id"),
+        col("pid"),
+        col("playlist_id"),
+        explode("tracks").alias("track"),
     ).select(
+        col("slice_id"),
+        col("pid"),
         col("playlist_id"),
         regexp_replace(col("track.track_uri"), "spotify:track:", "").alias("track_uri"),
         col("track.artist_name"),
@@ -92,7 +65,6 @@ def transform_tracks(df: DataFrame) -> DataFrame:
         .withColumn("track_id_int", hash(col("track_uri"))) \
         .withColumn("album_id_int", hash(col("album_uri"))) \
         .withColumn("artist_id_int", hash(col("artist_uri")))
-
 
 def spark_load_tracks(df: DataFrame, output_path: str, partitions: int = 8) -> None:
     """Write the transformed Spark DataFrame to Parquet files."""
@@ -116,6 +88,22 @@ def build_id_mappings(tracks_path: str, output_dir: str) -> pd.DataFrame:
     logger.info(f"Saved {len(unique_tracks)} unique track mappings")
     upload_file(str(local_path), "output/id_mappings.parquet")
     return unique_tracks
+
+def build_playlist_mappings(tracks_path: str, output_dir: str) -> pd.DataFrame:
+    """Build a stable (slice_id, pid) → contiguous playlist_id mapping and save it.
+    Returns the mappings DataFrame for downstream use.
+    """
+    df = pd.read_parquet(tracks_path, columns=["slice_id", "pid", "playlist_id"])
+    unique_playlists = (
+        df.drop_duplicates(["slice_id", "pid"])
+        .sort_values("playlist_id")
+        .reset_index(drop=True)
+    )
+    local_path = Path(output_dir) / "playlist_mappings.parquet"
+    unique_playlists.to_parquet(local_path, index=False)
+    logger.info(f"Saved {len(unique_playlists)} unique playlist mappings")
+    upload_file(str(local_path), "output/playlist_mappings.parquet")
+    return unique_playlists
 
 
 def build_stats(tracks_path: str, output_dir: str) -> None:
@@ -170,26 +158,30 @@ def build_stats_json(tracks_path: str, output_dir: str, top_n: int = 10) -> None
     }
 
     local_path = Path(output_dir) / "stats.json"
-    local_path.write_text(__import__("json").dumps(payload))
+    local_path.write_text(json.dumps(payload))
     logger.info(f"Saved stats.json to {local_path}")
     upload_file(str(local_path), "output/stats.json")
 
 
-def build_playlist_track_matrix(tracks_path: str, id_mappings: pd.DataFrame, output_dir: str) -> None:
-    """Build a playlist-track sparse COO matrix using contiguous IDs from id_mappings."""
+def build_playlist_track_matrix(
+    tracks_path: str,
+    id_mappings: pd.DataFrame,
+    playlist_mappings: pd.DataFrame,
+    output_dir: str,
+) -> None:
+    """Build a playlist-track sparse COO matrix using global playlist_id and track_id."""
     logger.info("Building playlist-track interaction matrix...")
 
     df = pd.read_parquet(tracks_path, columns=["playlist_id", "track_uri"])
     df = df.merge(id_mappings[["track_uri", "track_id"]], on="track_uri", how="inner").drop_duplicates()
 
-    playlist_codes = df["playlist_id"].astype("category").cat.codes.values
-    track_ids = df["track_id"].values
     interactions = np.ones(len(df), dtype=np.float32)
-
+    n_playlists = int(playlist_mappings["playlist_id"].max()) + 1
     n_tracks = int(id_mappings["track_id"].max()) + 1
+
     matrix = coo_matrix(
-        (interactions, (playlist_codes, track_ids)),
-        shape=(int(playlist_codes.max()) + 1, n_tracks),
+        (interactions, (df["playlist_id"].values, df["track_id"].values)),
+        shape=(n_playlists, n_tracks),
     )
 
     local_path = Path(output_dir) / "interaction_matrix.npz"
@@ -218,8 +210,9 @@ def run_full_etl(input_path: Union[str, List[str]], output_path: str, num_record
     upload_dir(tracks_path, "output/tracks.parquet")
 
     id_mappings = build_id_mappings(tracks_path, output_path)
+    playlist_mappings = build_playlist_mappings(tracks_path, output_path)
     build_stats(tracks_path, output_path)
     build_stats_json(tracks_path, output_path)
-    build_playlist_track_matrix(tracks_path, id_mappings, output_path)
+    build_playlist_track_matrix(tracks_path, id_mappings, playlist_mappings, output_path)
 
     logger.info("ETL pipeline finished")

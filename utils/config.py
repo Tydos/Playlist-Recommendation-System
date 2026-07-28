@@ -1,6 +1,6 @@
 import yaml
 from pathlib import Path
-from backend.utils.logging import get_logger
+from utils.logging import get_logger
 
 logger = get_logger("config")
 

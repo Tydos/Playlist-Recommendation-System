@@ -1,7 +1,7 @@
-from backend.utils.logging import get_logger
-from backend.utils.config import load_config
-from backend.etl.track_etl import run_full_etl
-from backend.utils.benchmark import benchmark
+from utils.logging import get_logger
+from utils.config import load_config
+from etl.track_etl import run_full_etl
+from utils.benchmark import benchmark
 
 logger = get_logger("run_etl")
 config = load_config()

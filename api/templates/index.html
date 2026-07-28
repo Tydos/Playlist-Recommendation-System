@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playlist Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div>
+        <h1>Playlist Dashboard</h1>
+        <p>Spotify Million Playlist Dataset: track and artist analytics</p>
+      </div>
+    </header>
+
+    {% if not loaded %}
+    <div class="warning-banner">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      ETL output not found. Run <code>python -m etl.run_etl</code> then reload this page.
+    </div>
+    {% else %}
+    <div class="tabs" role="tablist" aria-label="Dashboard sections">
+      <button
+        type="button"
+        class="tab-button active"
+        role="tab"
+        id="tab-rec"
+        aria-selected="true"
+        aria-controls="panel-rec"
+      >
+        Rec
+      </button>
+      <button
+        type="button"
+        class="tab-button"
+        role="tab"
+        id="tab-stats"
+        aria-selected="false"
+        aria-controls="panel-stats"
+      >
+        Stats
+      </button>
+    </div>
+
+    <section
+      class="tab-panel"
+      role="tabpanel"
+      id="panel-stats"
+      aria-labelledby="tab-stats"
+      hidden
+    >
+      <div class="stat-grid">
+        <div class="stat-card" style="--card-bg: oklch(96% 0.018 265); --card-border: oklch(87% 0.032 265); --value-color: oklch(33% 0.092 265)">
+          <div class="value">{{ '{:,}'.format(stats.total_tracks) }}</div>
+          <div class="label">Unique Tracks</div>
+          <div class="sub">distinct track URIs</div>
+        </div>
+        <div class="stat-card" style="--card-bg: oklch(94.5% 0.024 265); --card-border: oklch(85% 0.042 265); --value-color: oklch(29% 0.078 265)">
+          <div class="value">{{ '{:,}'.format(stats.total_artists) }}</div>
+          <div class="label">Artists</div>
+          <div class="sub">unique artists</div>
+        </div>
+        <div class="stat-card" style="--card-bg: oklch(95.5% 0.020 265); --card-border: oklch(86% 0.036 265); --value-color: oklch(37% 0.085 265)">
+          <div class="value">{{ '{:,}'.format(stats.total_playlists) }}</div>
+          <div class="label">Playlists</div>
+          <div class="sub">in dataset</div>
+        </div>
+        <div class="stat-card" style="--card-bg: oklch(96.5% 0.014 265); --card-border: oklch(88% 0.024 265); --value-color: oklch(42% 0.065 265)">
+          <div class="value">{{ stats.avg_playlist_size }}</div>
+          <div class="label">Avg Playlist Size</div>
+          <div class="sub">tracks per playlist</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Top Tracks</span>
+            <span class="panel-count">{{ stats.top_tracks|length }} tracks</span>
+          </div>
+          {% if stats.top_tracks %}
+          <ol class="track-list" aria-label="Top tracks by playlist appearances">
+            {% set max_count = stats.top_tracks[0].count %}
+            {% for t in stats.top_tracks %}
+            <li class="track-item" style="--bar-pct: {{ t.count / max_count }}; --bar-delay: {{ loop.index0 * 45 }}ms">
+              <div class="track-bar" aria-hidden="true"></div>
+              <span class="track-rank {{ 'gold' if loop.index0 == 0 else 'silver' if loop.index0 == 1 else 'bronze' if loop.index0 == 2 else '' }}" aria-label="Rank {{ loop.index }}">{{ loop.index }}</span>
+              <div class="track-info">
+                <div class="track-name" title="{{ t.track_name }}">{{ t.track_name }}</div>
+                <div class="track-artist" title="{{ t.artist_name }}">{{ t.artist_name }}</div>
+              </div>
+              <span class="count-badge">{{ '{:,}'.format(t.count) }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="panel-empty">No track data available.</p>
+          {% endif %}
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Top Artists</span>
+            <span class="panel-count">{{ stats.top_artists|length }} artists</span>
+          </div>
+          {% if stats.top_artists %}
+          <ol class="track-list" aria-label="Top artists by playlist appearances">
+            {% set max_count = stats.top_artists[0].count %}
+            {% for a in stats.top_artists %}
+            <li class="track-item" style="--bar-pct: {{ a.count / max_count }}; --bar-delay: {{ loop.index0 * 45 }}ms">
+              <div class="track-bar" aria-hidden="true"></div>
+              <span class="track-rank {{ 'gold' if loop.index0 == 0 else 'silver' if loop.index0 == 1 else 'bronze' if loop.index0 == 2 else '' }}" aria-label="Rank {{ loop.index }}">{{ loop.index }}</span>
+              <div class="track-info">
+                <div class="track-name" title="{{ a.artist_name }}">{{ a.artist_name }}</div>
+              </div>
+              <span class="count-badge">{{ '{:,}'.format(a.count) }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="panel-empty">No artist data available.</p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="tab-panel active"
+      role="tabpanel"
+      id="panel-rec"
+      aria-labelledby="tab-rec"
+    >
+      <div class="panel rec-panel">
+        <div class="panel-header">
+          <span class="panel-title">Popularity Recommendations</span>
+          <button type="button" class="rec-button" id="rec-button">View Recommendations</button>
+        </div>
+
+        <div class="seed-search">
+          <label class="seed-search-label" for="seed-search-input">Search for a song to use as a seed</label>
+          <div class="seed-search-box">
+            <input
+              type="text"
+              id="seed-search-input"
+              class="seed-search-input"
+              placeholder="Type a song name..."
+              autocomplete="off"
+            />
+            <ul class="seed-search-results" id="seed-search-results" hidden></ul>
+          </div>
+          <ul class="seed-chip-list" id="seed-chip-list" aria-label="Selected seed tracks"></ul>
+        </div>
+
+        <p class="rec-hint" id="rec-hint">
+          Uses the top {{ seed_tracks|length }} tracks as seeds and recommends other popular tracks.
+        </p>
+        <div id="rec-status" class="rec-status" hidden></div>
+        <ol class="track-list" id="rec-results" aria-label="Recommended tracks" hidden></ol>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  {% if loaded %}
+  <script>
+    const defaultSeedTracks = {{ seed_tracks | tojson }};
+    const selectedSeeds = new Map();
+
+    const escapeHtml = (value) => String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+    const tabButtons = document.querySelectorAll(".tab-button");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const panel = document.getElementById(button.getAttribute("aria-controls"));
+
+        tabButtons.forEach((item) => {
+          const isActive = item === button;
+          item.classList.toggle("active", isActive);
+          item.setAttribute("aria-selected", String(isActive));
+        });
+
+        tabPanels.forEach((item) => {
+          const isActive = item === panel;
+          item.classList.toggle("active", isActive);
+          item.hidden = !isActive;
+        });
+      });
+    });
+
+    const searchInput = document.getElementById("seed-search-input");
+    const searchResults = document.getElementById("seed-search-results");
+    const chipList = document.getElementById("seed-chip-list");
+    const recHint = document.getElementById("rec-hint");
+
+    let searchTimer = null;
+
+    const currentSeedUris = () => (
+      selectedSeeds.size > 0 ? [...selectedSeeds.keys()] : defaultSeedTracks
+    );
+
+    const renderChips = () => {
+      chipList.innerHTML = [...selectedSeeds.values()].map((track) => `
+        <li class="seed-chip">
+          <span title="${escapeHtml(track.artist_name)}">${escapeHtml(track.track_name)}</span>
+          <button type="button" class="seed-chip-remove" data-uri="${escapeHtml(track.track_uri)}" aria-label="Remove ${escapeHtml(track.track_name)}">&times;</button>
+        </li>
+      `).join("");
+
+      recHint.textContent = selectedSeeds.size > 0
+        ? `Using ${selectedSeeds.size} selected song${selectedSeeds.size > 1 ? "s" : ""} as seeds.`
+        : `Uses the top ${defaultSeedTracks.length} tracks as seeds and recommends other popular tracks.`;
+
+      chipList.querySelectorAll(".seed-chip-remove").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selectedSeeds.delete(btn.dataset.uri);
+          renderChips();
+        });
+      });
+    };
+
+    const hideSearchResults = () => {
+      searchResults.hidden = true;
+      searchResults.innerHTML = "";
+    };
+
+    searchInput?.addEventListener("input", () => {
+      const query = searchInput.value.trim();
+      clearTimeout(searchTimer);
+
+      if (!query) {
+        hideSearchResults();
+        return;
+      }
+
+      searchTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/tracks/search?q=${encodeURIComponent(query)}&limit=8`);
+          if (!response.ok) return;
+
+          const tracks = await response.json();
+          if (!tracks.length) {
+            searchResults.hidden = false;
+            searchResults.innerHTML = `<li class="seed-search-empty">No matching songs found.</li>`;
+            return;
+          }
+
+          searchResults.hidden = false;
+          searchResults.innerHTML = tracks.map((track) => `
+            <li class="seed-search-item" data-uri="${escapeHtml(track.track_uri)}" data-name="${escapeHtml(track.track_name)}" data-artist="${escapeHtml(track.artist_name)}">
+              <span class="seed-search-name">${escapeHtml(track.track_name)}</span>
+              <span class="seed-search-artist">${escapeHtml(track.artist_name)}</span>
+            </li>
+          `).join("");
+
+          searchResults.querySelectorAll(".seed-search-item").forEach((item) => {
+            item.addEventListener("click", () => {
+              const { uri, name, artist } = item.dataset;
+              selectedSeeds.set(uri, { track_uri: uri, track_name: name, artist_name: artist });
+              renderChips();
+              searchInput.value = "";
+              hideSearchResults();
+            });
+          });
+        } catch {
+          hideSearchResults();
+        }
+      }, 250);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".seed-search")) {
+        hideSearchResults();
+      }
+    });
+
+    document.getElementById("rec-button")?.addEventListener("click", async () => {
+      const button = document.getElementById("rec-button");
+      const status = document.getElementById("rec-status");
+      const results = document.getElementById("rec-results");
+
+      button.disabled = true;
+      status.hidden = false;
+      status.textContent = "Loading recommendations...";
+      results.hidden = true;
+      results.innerHTML = "";
+
+      const params = new URLSearchParams();
+      currentSeedUris().forEach((uri) => params.append("seed_tracks", uri));
+      params.set("limit", "10");
+
+      try {
+        const response = await fetch(`/api/recommend?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Request failed (${response.status})`);
+        }
+
+        const tracks = await response.json();
+        if (!tracks.length) {
+          status.textContent = "No recommendations found.";
+          return;
+        }
+
+        status.hidden = true;
+        results.hidden = false;
+
+        const maxCount = tracks[0].count;
+        results.innerHTML = tracks.map((track, index) => {
+          const rankClass = index === 0 ? "gold" : index === 1 ? "silver" : index === 2 ? "bronze" : "";
+          const barPct = maxCount ? track.count / maxCount : 0;
+          return `
+            <li class="track-item" style="--bar-pct: ${barPct}; --bar-delay: ${index * 45}ms">
+              <div class="track-bar" aria-hidden="true"></div>
+              <span class="track-rank ${rankClass}" aria-label="Rank ${index + 1}">${index + 1}</span>
+              <div class="track-info">
+                <div class="track-name" title="${escapeHtml(track.track_name)}">${escapeHtml(track.track_name)}</div>
+                <div class="track-artist" title="${escapeHtml(track.artist_name)}">${escapeHtml(track.artist_name)}</div>
+              </div>
+              <span class="count-badge">${Number(track.count).toLocaleString()}</span>
+            </li>
+          `;
+        }).join("");
+      } catch (error) {
+        status.textContent = error.message || "Failed to load recommendations.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+  {% endif %}
+</body>
+</html>

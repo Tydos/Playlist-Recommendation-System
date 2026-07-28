@@ -1,15 +1,15 @@
 import os
 from pathlib import Path
 from pyspark.sql import SparkSession
-from backend.utils.config import load_config
+from utils.config import load_config
 
 # temp workaround for windows
 def _windows_hadoop_jvm_opts() -> str:
     """Return extra JVM opts that point the driver at the bundled winutils."""
-    hadoop_home = str(Path(__file__).parents[2] / "hadoop")
+    hadoop_home = str(Path(__file__).parents[1] / "hadoop")
     hadoop_bin = str(Path(hadoop_home) / "bin")
     os.environ["HADOOP_HOME"] = hadoop_home
-    # Use forward slashes — backslashes in -D values confuse the JVM arg parser.
+    # Use forward slashes. Backslashes in -D values confuse the JVM arg parser.
     home_fwd = hadoop_home.replace("\\", "/")
     bin_fwd = hadoop_bin.replace("\\", "/")
     return f"-Dhadoop.home.dir={home_fwd} -Djava.library.path={bin_fwd}"

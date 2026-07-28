@@ -1,7 +1,7 @@
 # Spotify Song Recommendation Project Configuration
 
 #data paths
-dataset_path: "dataset/mpd.example.json" # test dataset
+dataset_path: "dataset/data" # test dataset
 output_path: "output"
 
 #data sampling

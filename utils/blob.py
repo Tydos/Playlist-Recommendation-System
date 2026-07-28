@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import boto3
 from botocore.client import Config
-from backend.utils.logging import get_logger
+from utils.logging import get_logger
 
 load_dotenv()
 logger = get_logger("blob")
@@ -37,7 +37,7 @@ def _get_client():
 def upload_file(local_path: str, blob_key: str) -> str | None:
     """Upload a single file to Supabase S3 and return its URL. No-ops if S3 is not configured."""
     if not _is_configured():
-        logger.warning(f"S3 not configured — skipping upload of {local_path}")
+        logger.warning(f"S3 not configured. Skipping upload of {local_path}")
         return None
     bucket = os.environ["SUPABASE_S3_BUCKET"]
     client = _get_client()
@@ -51,7 +51,7 @@ def upload_file(local_path: str, blob_key: str) -> str | None:
 def upload_dir(local_dir: str, blob_prefix: str) -> list[str]:
     """Recursively upload all files in a directory, preserving structure."""
     if not _is_configured():
-        logger.warning(f"S3 not configured — skipping upload of {local_dir}/")
+        logger.warning(f"S3 not configured. Skipping upload of {local_dir}/")
         return []
     urls = []
     for path in Path(local_dir).rglob("*"):

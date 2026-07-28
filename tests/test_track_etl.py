@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 from scipy.sparse import load_npz
 
-from backend.etl.track_etl import (
+from etl.track_etl import (
     build_id_mappings,
     build_playlist_track_matrix,
     build_stats,
@@ -195,7 +195,7 @@ def test_build_id_mappings_deduplicates_and_assigns_ids(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("backend.etl.track_etl.upload_file") as mock_upload:
+    with patch("etl.track_etl.upload_file") as mock_upload:
         result = build_id_mappings(str(tracks_path), str(tmp_path))
 
     assert len(result) == 2  # "abc" and "def" are the two unique track_uris
@@ -213,7 +213,7 @@ def test_build_stats_creates_all_three_parquet_files(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("backend.etl.track_etl.upload_dir") as mock_upload:
+    with patch("etl.track_etl.upload_dir") as mock_upload:
         build_stats(str(tracks_path), str(tmp_path))
 
     stats_dir = tmp_path / "stats"
@@ -227,7 +227,7 @@ def test_build_stats_counts_are_correct(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)  # "abc" appears in 2 playlists, "def" in 1
 
-    with patch("backend.etl.track_etl.upload_dir"):
+    with patch("etl.track_etl.upload_dir"):
         build_stats(str(tracks_path), str(tmp_path))
 
     track_counts = pd.read_parquet(tmp_path / "stats" / "track_counts.parquet")
@@ -247,10 +247,10 @@ def test_build_stats_json_creates_valid_json(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("backend.etl.track_etl.upload_dir"):
+    with patch("etl.track_etl.upload_dir"):
         build_stats(str(tracks_path), str(tmp_path))
 
-    with patch("backend.etl.track_etl.upload_file") as mock_upload:
+    with patch("etl.track_etl.upload_file") as mock_upload:
         build_stats_json(str(tracks_path), str(tmp_path), top_n=2)
 
     stats_file = tmp_path / "stats.json"
@@ -272,10 +272,10 @@ def test_build_stats_json_top_n_is_respected(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("backend.etl.track_etl.upload_dir"):
+    with patch("etl.track_etl.upload_dir"):
         build_stats(str(tracks_path), str(tmp_path))
 
-    with patch("backend.etl.track_etl.upload_file"):
+    with patch("etl.track_etl.upload_file"):
         build_stats_json(str(tracks_path), str(tmp_path), top_n=1)
 
     payload = json.loads((tmp_path / "stats.json").read_text())
@@ -291,10 +291,10 @@ def test_build_playlist_track_matrix_creates_npz(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("backend.etl.track_etl.upload_file") as mock_upload:
+    with patch("etl.track_etl.upload_file") as mock_upload:
         id_mappings = build_id_mappings(str(tracks_path), str(tmp_path))
 
-    with patch("backend.etl.track_etl.upload_file") as mock_upload:
+    with patch("etl.track_etl.upload_file") as mock_upload:
         build_playlist_track_matrix(str(tracks_path), id_mappings, str(tmp_path))
 
     npz_path = tmp_path / "interaction_matrix.npz"
