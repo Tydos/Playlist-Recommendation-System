@@ -1,0 +1,43 @@
+[project]
+name = "playlist-recommendation-system"
+version = "0.1.0"
+description = "Collaborative playlist recommendation system built on the Spotify Million Playlist Dataset"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    "pandas",
+    "pydantic",
+    "pyarrow",
+    "pyyaml",
+    "pyspark",
+    "scipy",
+    "numpy",
+    "boto3",
+    "python-dotenv",
+    "pytest",
+    "ruff"
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["etl", "etl.*", "api", "api.*", "models", "models.*", "utils", "utils.*"]
+
+[tool.ruff]
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+# E4/E7/E9 + F mirrors ruff's historical default rule set (pyflakes + a
+# handful of pycodestyle checks); I adds import sorting. Line-length (E501)
+# and the wider stylistic/bugbear/security rule families are intentionally
+# left off since this codebase wasn't written against them.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

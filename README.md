@@ -26,7 +26,7 @@ dataset/
   data/             Full MPD JSON slices (not tracked in git; download separately)
 output/           ETL outputs (not tracked in git)
 hadoop/           Windows winutils for local Spark (not tracked in git)
-requirements.txt
+pyproject.toml    Project metadata, dependencies, ruff config
 README.md
 ```
 
@@ -169,18 +169,21 @@ Interactive API docs: `http://localhost:8000/docs`
 
 ## Setup
 
-**API only** (no ETL, no PySpark). Dashboard and JSON endpoints:
+Dependencies are declared in `pyproject.toml`. The base install covers the API and dashboard; ETL (PySpark) and S3 backup are optional extras.
+
+**API only** (no ETL, no PySpark). Serve an already-populated `output/` folder:
 
 ```bash
-pip install -r api/requirements.txt
-python -m etl.run_etl   # uses dataset/mpd.example.json by default
+pip install -e .
 uvicorn api.main:app --reload
 ```
 
-**Full local dev** (ETL + API):
+**Full local dev** (ETL + API + S3 backup + tests/lint):
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[all]"
+python -m etl.run_etl   # uses dataset/mpd.example.json by default
+uvicorn api.main:app --reload
 ```
 
 > Requires Java 8+ and Hadoop `winutils` on Windows for PySpark. See `hadoop/` directory.

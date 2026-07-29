@@ -3,8 +3,10 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from scipy.sparse import coo_matrix
 
-from api.main import app, _data
+from api.main import app
+from utils.data_loader import app_data
 
 _TRACK_COUNTS = pd.DataFrame([
     {"track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "count": 10},
@@ -21,12 +23,22 @@ _PLAYLIST_SIZES = pd.DataFrame([
 _TRACKS = pd.DataFrame([
     {"playlist_id": 0, "track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "album_name": "Album A"},
 ])
+_ID_MAPPINGS = pd.DataFrame([
+    {"track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "track_id": 0},
+    {"track_uri": "def", "track_name": "Song B", "artist_name": "Artist B", "track_id": 1},
+])
+_PLAYLIST_MAPPINGS = pd.DataFrame([
+    {"slice_id": "slice-0", "pid": 0, "playlist_id": 0},
+])
+_INTERACTION_MATRIX = coo_matrix(([1, 1], ([0, 0], [0, 1])), shape=(1, 2))
 
 _PARQUET_MAP = {
     "track_counts": _TRACK_COUNTS,
     "artist_counts": _ARTIST_COUNTS,
     "playlist_sizes": _PLAYLIST_SIZES,
     "tracks": _TRACKS,
+    "id_mappings": _ID_MAPPINGS,
+    "playlist_mappings": _PLAYLIST_MAPPINGS,
 }
 
 
@@ -39,20 +51,25 @@ def _make_load_parquet(mapping):
     return _load
 
 
+def _load_interaction_matrix(_path):
+    return _INTERACTION_MATRIX.copy()
+
+
 @pytest.fixture
 def loaded_client():
-    with patch("api.main._load_parquet", side_effect=_make_load_parquet(_PARQUET_MAP)):
-        with TestClient(app) as client:
-            yield client
+    with patch("utils.data_loader.load_parquet", side_effect=_make_load_parquet(_PARQUET_MAP)):
+        with patch("utils.data_loader.load_interaction_matrix", side_effect=_load_interaction_matrix):
+            with TestClient(app) as client:
+                yield client
 
 
 def test_startup_fails_when_etl_not_run():
-    _data.clear()
-    with patch("api.main._load_parquet", side_effect=FileNotFoundError("no data")):
+    app_data.clear()
+    with patch("utils.data_loader.load_parquet", side_effect=FileNotFoundError("no data")):
         with pytest.raises(FileNotFoundError):
             with TestClient(app):
                 pass
-    _data.clear()
+    app_data.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -107,20 +124,21 @@ def test_top_artists_returns_ranked_list(loaded_client):
 
 
 # ---------------------------------------------------------------------------
-# /api/recommend
+# /api/recommend/popular
 # ---------------------------------------------------------------------------
 
 def test_recommend_excludes_seed_tracks(loaded_client):
-    r = loaded_client.get("/api/recommend", params={"seed_tracks": ["abc"], "limit": 10})
+    r = loaded_client.get("/api/recommend/popular", params={"seed_tracks": ["abc"], "limit": 10})
     assert r.status_code == 200
     body = r.json()
     assert all(item["track_uri"] != "abc" for item in body)
     assert body[0]["track_name"] == "Song B"
+    assert body[0]["score"] == body[0]["count"]
 
 
 def test_recommend_normalizes_spotify_uri(loaded_client):
     r = loaded_client.get(
-        "/api/recommend",
+        "/api/recommend/popular",
         params={"seed_tracks": ["spotify:track:abc"], "limit": 10},
     )
     assert r.status_code == 200

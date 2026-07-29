@@ -1,5 +1,6 @@
 __pycache__
 venv
+*.egg-info/
 dataset/*
 !dataset/mpd.example.json
 .ruff_cache

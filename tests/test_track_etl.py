@@ -7,12 +7,13 @@ from scipy.sparse import load_npz
 
 from etl.track_etl import (
     build_id_mappings,
+    build_playlist_mappings,
     build_playlist_track_matrix,
     build_stats,
     build_stats_json,
-    extract_tracks,
-    load_tracks,
-    transform_track,
+    spark_extract_tracks,
+    spark_load_tracks,
+    transform_tracks,
 )
 
 
@@ -21,11 +22,22 @@ def _write_json(path: Path, payload: dict) -> None:
         json.dump(payload, f)
 
 
+def _track(uri_suffix: str, name: str, artist: str) -> dict:
+    return {
+        "track_uri": f"spotify:track:{uri_suffix}",
+        "artist_name": artist,
+        "track_name": name,
+        "album_name": f"Album {name}",
+        "album_uri": f"spotify:album:alb-{uri_suffix}",
+        "artist_uri": f"spotify:artist:art-{uri_suffix}",
+    }
+
+
 def _make_tracks_parquet(path: Path) -> pd.DataFrame:
     df = pd.DataFrame([
-        {"playlist_id": 0, "track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "album_name": "Album A", "album_uri": "alb1", "artist_uri": "art1"},
-        {"playlist_id": 0, "track_uri": "def", "track_name": "Song B", "artist_name": "Artist B", "album_name": "Album B", "album_uri": "alb2", "artist_uri": "art2"},
-        {"playlist_id": 1, "track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "album_name": "Album A", "album_uri": "alb1", "artist_uri": "art1"},
+        {"slice_id": "slice_a", "pid": 0, "playlist_id": 0, "track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "album_name": "Album A", "album_uri": "alb1", "artist_uri": "art1"},
+        {"slice_id": "slice_a", "pid": 0, "playlist_id": 0, "track_uri": "def", "track_name": "Song B", "artist_name": "Artist B", "album_name": "Album B", "album_uri": "alb2", "artist_uri": "art2"},
+        {"slice_id": "slice_a", "pid": 1, "playlist_id": 1, "track_uri": "abc", "track_name": "Song A", "artist_name": "Artist A", "album_name": "Album A", "album_uri": "alb1", "artist_uri": "art1"},
     ])
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
@@ -33,158 +45,92 @@ def _make_tracks_parquet(path: Path) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# extract_tracks
+# spark_extract_tracks
 # ---------------------------------------------------------------------------
 
-def test_extract_tracks_outputs_expected_fields(tmp_path):
+def test_spark_extract_tracks_reads_expected_schema(spark, tmp_path):
     file_path = tmp_path / "slice.json"
     _write_json(
         file_path,
         {
             "playlists": [
-                {
-                    "tracks": [
-                        {
-                            "track_uri": "spotify:track:111",
-                            "artist_name": "Artist A",
-                            "track_name": "Song A",
-                            "album_name": "Album A",
-                            "album_uri": "spotify:album:aaa",
-                            "artist_uri": "spotify:artist:111a",
-                        }
-                    ]
-                },
-                {
-                    "tracks": [
-                        {
-                            "track_uri": "spotify:track:222",
-                            "artist_name": "Artist B",
-                            "track_name": "Song B",
-                            "album_name": "Album B",
-                            "album_uri": "spotify:album:bbb",
-                            "artist_uri": "spotify:artist:222b",
-                        }
-                    ]
-                },
+                {"pid": 0, "tracks": [_track("111", "Song A", "Artist A")]},
+                {"pid": 1, "tracks": [_track("222", "Song B", "Artist B")]},
             ]
         },
     )
 
-    rows = list(extract_tracks(str(file_path)))
-    assert len(rows) == 2
-    assert rows[0]["playlist_id"] == 0
-    assert rows[0]["track_uri"] == "spotify:track:111"
-    assert rows[0]["artist_name"] == "Artist A"
-    assert rows[0]["track_name"] == "Song A"
-    assert rows[0]["album_name"] == "Album A"
-    assert rows[0]["album_uri"] == "spotify:album:aaa"
-    assert rows[0]["artist_uri"] == "spotify:artist:111a"
-    assert rows[1]["playlist_id"] == 1
-    assert rows[1]["track_uri"] == "spotify:track:222"
+    df = spark_extract_tracks(spark, str(file_path))
+    row = df.collect()[0]
+    playlists = sorted(row["playlists"], key=lambda p: p["pid"])
+
+    assert len(playlists) == 2
+    assert playlists[0]["pid"] == 0
+    assert playlists[0]["tracks"][0]["track_uri"] == "spotify:track:111"
+    assert playlists[1]["pid"] == 1
+    assert playlists[1]["tracks"][0]["artist_name"] == "Artist B"
 
 
 # ---------------------------------------------------------------------------
-# transform_track
+# transform_tracks
 # ---------------------------------------------------------------------------
 
-def test_transform_track_strips_all_prefixes():
-    record = {
-        "track_uri": "spotify:track:xyz",
-        "album_uri": "spotify:album:abc",
-        "artist_uri": "spotify:artist:zzz",
-        "track_name": "T",
-        "album_name": "A",
-        "artist_name": "R",
-    }
-    result = transform_track(record)
-    assert result["track_uri"] == "xyz"
-    assert result["album_uri"] == "abc"
-    assert result["artist_uri"] == "zzz"
-
-
-def test_transform_track_handles_empty_uris():
-    record = {
-        "track_uri": "",
-        "album_uri": "",
-        "artist_uri": "",
-        "track_name": "",
-        "album_name": "",
-        "artist_name": "",
-    }
-    result = transform_track(record)
-    assert result["track_uri"] == ""
-    assert result["album_uri"] == ""
-    assert result["artist_uri"] == ""
-
-
-# ---------------------------------------------------------------------------
-# load_tracks
-# ---------------------------------------------------------------------------
-
-def test_load_tracks_creates_dir_and_writes_parquet(monkeypatch, tmp_path):
+def test_transform_tracks_flattens_and_strips_uri_prefixes(spark, tmp_path):
     file_path = tmp_path / "slice.json"
     _write_json(
         file_path,
-        {
-            "playlists": [
-                {
-                    "tracks": [
-                        {
-                            "track_uri": "spotify:track:123",
-                            "artist_name": "Artist1",
-                            "track_name": "Track1",
-                            "album_name": "Album1",
-                            "album_uri": "spotify:album:abc",
-                            "artist_uri": "spotify:artist:a1",
-                        },
-                        {
-                            "track_uri": "spotify:track:456",
-                            "artist_name": "Artist2",
-                            "track_name": "Track2",
-                            "album_name": "Album2",
-                            "album_uri": "spotify:album:def",
-                            "artist_uri": "spotify:artist:a2",
-                        },
-                    ]
-                }
-            ]
-        },
+        {"playlists": [{"pid": 0, "tracks": [_track("111", "Song A", "Artist A")]}]},
     )
 
-    out_dir = tmp_path / "parquet_out"
-    captured = {}
+    raw = spark_extract_tracks(spark, str(file_path))
+    result = transform_tracks(raw).toPandas()
 
-    def fake_to_parquet(self, path, index=False):
-        captured["path"] = str(path)
-        captured["index"] = index
-        captured["df"] = self.copy()
-
-    monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_to_parquet)
-
-    count = load_tracks(str(file_path), str(out_dir))
-
-    assert count == 2
-    assert out_dir.exists()
-    assert captured["path"].endswith("slice.parquet")
-    assert captured["index"] is False
-    assert captured["df"].iloc[0]["track_uri"] == "123"
-    assert captured["df"].iloc[0]["album_uri"] == "abc"
-    assert captured["df"].iloc[0]["artist_uri"] == "a1"
+    assert len(result) == 1
+    row = result.iloc[0]
+    assert row["track_uri"] == "111"
+    assert row["album_uri"] == "alb-111"
+    assert row["artist_uri"] == "art-111"
+    assert row["track_name"] == "Song A"
+    assert row["artist_name"] == "Artist A"
+    assert row["pid"] == 0
+    assert row["playlist_id"] == 0
 
 
-def test_load_tracks_returns_zero_when_no_tracks(monkeypatch, tmp_path):
-    file_path = tmp_path / "empty_slice.json"
-    _write_json(file_path, {"playlists": []})
+def test_transform_tracks_assigns_unique_playlist_ids_across_slices(spark, tmp_path):
+    """Two different slices both use pid=0; playlist_id must disambiguate them globally."""
+    file_a = tmp_path / "slice_a.json"
+    file_b = tmp_path / "slice_b.json"
+    _write_json(file_a, {"playlists": [{"pid": 0, "tracks": [_track("111", "Song A", "Artist A")]}]})
+    _write_json(file_b, {"playlists": [{"pid": 0, "tracks": [_track("222", "Song B", "Artist B")]}]})
 
-    out_dir = tmp_path / "out"
+    raw = spark_extract_tracks(spark, [str(file_a), str(file_b)])
+    result = transform_tracks(raw).toPandas()
 
-    def fail_if_called(*args, **kwargs):
-        raise AssertionError("to_parquet should not be called when there are no tracks")
+    assert len(result) == 2
+    assert result["pid"].tolist() == [0, 0]
+    assert result["slice_id"].nunique() == 2
+    assert result["playlist_id"].nunique() == 2
 
-    monkeypatch.setattr(pd.DataFrame, "to_parquet", fail_if_called)
 
-    count = load_tracks(str(file_path), str(out_dir))
-    assert count == 0
+# ---------------------------------------------------------------------------
+# spark_load_tracks
+# ---------------------------------------------------------------------------
+
+def test_spark_load_tracks_writes_readable_parquet(spark, tmp_path):
+    file_path = tmp_path / "slice.json"
+    _write_json(
+        file_path,
+        {"playlists": [{"pid": 0, "tracks": [_track("111", "Song A", "Artist A")]}]},
+    )
+    out_path = tmp_path / "tracks.parquet"
+
+    raw = spark_extract_tracks(spark, str(file_path))
+    transformed = transform_tracks(raw)
+    spark_load_tracks(transformed, str(out_path), partitions=1)
+
+    written = pd.read_parquet(out_path)
+    assert len(written) == 1
+    assert written.iloc[0]["track_uri"] == "111"
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +149,23 @@ def test_build_id_mappings_deduplicates_and_assigns_ids(tmp_path):
     assert set(result["track_id"]) == {0, 1}
     assert (tmp_path / "id_mappings.parquet").exists()
     mock_upload.assert_called_once_with(str(tmp_path / "id_mappings.parquet"), "output/id_mappings.parquet")
+
+
+# ---------------------------------------------------------------------------
+# build_playlist_mappings
+# ---------------------------------------------------------------------------
+
+def test_build_playlist_mappings_deduplicates_and_sorts(tmp_path):
+    tracks_path = tmp_path / "tracks.parquet"
+    _make_tracks_parquet(tracks_path)
+
+    with patch("etl.track_etl.upload_file") as mock_upload:
+        result = build_playlist_mappings(str(tracks_path), str(tmp_path))
+
+    assert len(result) == 2  # playlist_id 0 and 1, deduped from 3 track rows
+    assert result["playlist_id"].tolist() == [0, 1]
+    assert (tmp_path / "playlist_mappings.parquet").exists()
+    mock_upload.assert_called_once_with(str(tmp_path / "playlist_mappings.parquet"), "output/playlist_mappings.parquet")
 
 
 # ---------------------------------------------------------------------------
@@ -291,11 +254,12 @@ def test_build_playlist_track_matrix_creates_npz(tmp_path):
     tracks_path = tmp_path / "tracks.parquet"
     _make_tracks_parquet(tracks_path)
 
-    with patch("etl.track_etl.upload_file") as mock_upload:
+    with patch("etl.track_etl.upload_file"):
         id_mappings = build_id_mappings(str(tracks_path), str(tmp_path))
+        playlist_mappings = build_playlist_mappings(str(tracks_path), str(tmp_path))
 
     with patch("etl.track_etl.upload_file") as mock_upload:
-        build_playlist_track_matrix(str(tracks_path), id_mappings, str(tmp_path))
+        build_playlist_track_matrix(str(tracks_path), id_mappings, playlist_mappings, str(tmp_path))
 
     npz_path = tmp_path / "interaction_matrix.npz"
     assert npz_path.exists()

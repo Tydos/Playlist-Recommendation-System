@@ -1,5 +1,7 @@
-import yaml
 from pathlib import Path
+
+import yaml
+
 from utils.logging import get_logger
 
 logger = get_logger("config")

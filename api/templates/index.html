@@ -134,7 +134,7 @@
     >
       <div class="panel rec-panel">
         <div class="panel-header">
-          <span class="panel-title">Popularity Recommendations</span>
+          <span class="panel-title">Recommendation Report</span>
           <button type="button" class="rec-button" id="rec-button">View Recommendations</button>
         </div>
 
@@ -157,7 +157,23 @@
           Uses the top {{ seed_tracks|length }} tracks as seeds and recommends other popular tracks.
         </p>
         <div id="rec-status" class="rec-status" hidden></div>
-        <ol class="track-list" id="rec-results" aria-label="Recommended tracks" hidden></ol>
+
+        <div class="rec-results-grid" id="rec-results-grid" hidden>
+          <div class="rec-column">
+            <div class="panel-header">
+              <span class="panel-title">Popularity</span>
+              <span class="panel-count" id="rec-popular-count"></span>
+            </div>
+            <ol class="track-list" id="rec-results-popular" aria-label="Popularity recommended tracks"></ol>
+          </div>
+          <div class="rec-column">
+            <div class="panel-header">
+              <span class="panel-title">Similar Tracks (Co-occurrence)</span>
+              <span class="panel-count" id="rec-cooccurence-count"></span>
+            </div>
+            <ol class="track-list" id="rec-results-cooccurence" aria-label="Co-occurrence recommended tracks"></ol>
+          </div>
+        </div>
       </div>
     </section>
     {% endif %}
@@ -282,53 +298,85 @@
       }
     });
 
+    const renderTrackList = (listEl, countEl, tracks) => {
+      countEl.textContent = `${tracks.length} track${tracks.length === 1 ? "" : "s"}`;
+
+      if (!tracks.length) {
+        listEl.innerHTML = `<p class="panel-empty">No recommendations found.</p>`;
+        return;
+      }
+
+      const maxCount = tracks[0].count;
+      listEl.innerHTML = tracks.map((track, index) => {
+        const rankClass = index === 0 ? "gold" : index === 1 ? "silver" : index === 2 ? "bronze" : "";
+        const barPct = maxCount ? track.count / maxCount : 0;
+        return `
+          <li class="track-item" style="--bar-pct: ${barPct}; --bar-delay: ${index * 45}ms">
+            <div class="track-bar" aria-hidden="true"></div>
+            <span class="track-rank ${rankClass}" aria-label="Rank ${index + 1}">${index + 1}</span>
+            <div class="track-info">
+              <div class="track-name" title="${escapeHtml(track.track_name)}">${escapeHtml(track.track_name)}</div>
+              <div class="track-artist" title="${escapeHtml(track.artist_name)}">${escapeHtml(track.artist_name)}</div>
+            </div>
+            <span class="count-badge">${Number(track.count).toLocaleString()}</span>
+          </li>
+        `;
+      }).join("");
+    };
+
+    const fetchRecommendations = async (endpoint, params) => {
+      const response = await fetch(`${endpoint}?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
+      }
+      return response.json();
+    };
+
     document.getElementById("rec-button")?.addEventListener("click", async () => {
       const button = document.getElementById("rec-button");
       const status = document.getElementById("rec-status");
-      const results = document.getElementById("rec-results");
+      const resultsGrid = document.getElementById("rec-results-grid");
+      const popularList = document.getElementById("rec-results-popular");
+      const popularCount = document.getElementById("rec-popular-count");
+      const cooccurenceList = document.getElementById("rec-results-cooccurence");
+      const cooccurenceCount = document.getElementById("rec-cooccurence-count");
 
       button.disabled = true;
       status.hidden = false;
       status.textContent = "Loading recommendations...";
-      results.hidden = true;
-      results.innerHTML = "";
+      resultsGrid.hidden = true;
+      popularList.innerHTML = "";
+      cooccurenceList.innerHTML = "";
 
       const params = new URLSearchParams();
       currentSeedUris().forEach((uri) => params.append("seed_tracks", uri));
       params.set("limit", "10");
 
       try {
-        const response = await fetch(`/api/recommend?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error(`Request failed (${response.status})`);
-        }
-
-        const tracks = await response.json();
-        if (!tracks.length) {
-          status.textContent = "No recommendations found.";
-          return;
-        }
+        // Report results from every recommendation model side by side.
+        const [popularResult, cooccurenceResult] = await Promise.allSettled([
+          fetchRecommendations("/api/recommend/popular", params),
+          fetchRecommendations("/api/recommend/cooccurence", params),
+        ]);
 
         status.hidden = true;
-        results.hidden = false;
+        resultsGrid.hidden = false;
 
-        const maxCount = tracks[0].count;
-        results.innerHTML = tracks.map((track, index) => {
-          const rankClass = index === 0 ? "gold" : index === 1 ? "silver" : index === 2 ? "bronze" : "";
-          const barPct = maxCount ? track.count / maxCount : 0;
-          return `
-            <li class="track-item" style="--bar-pct: ${barPct}; --bar-delay: ${index * 45}ms">
-              <div class="track-bar" aria-hidden="true"></div>
-              <span class="track-rank ${rankClass}" aria-label="Rank ${index + 1}">${index + 1}</span>
-              <div class="track-info">
-                <div class="track-name" title="${escapeHtml(track.track_name)}">${escapeHtml(track.track_name)}</div>
-                <div class="track-artist" title="${escapeHtml(track.artist_name)}">${escapeHtml(track.artist_name)}</div>
-              </div>
-              <span class="count-badge">${Number(track.count).toLocaleString()}</span>
-            </li>
-          `;
-        }).join("");
+        if (popularResult.status === "fulfilled") {
+          renderTrackList(popularList, popularCount, popularResult.value);
+        } else {
+          popularCount.textContent = "";
+          popularList.innerHTML = `<p class="panel-empty">${escapeHtml(popularResult.reason.message || "Failed to load.")}</p>`;
+        }
+
+        if (cooccurenceResult.status === "fulfilled") {
+          renderTrackList(cooccurenceList, cooccurenceCount, cooccurenceResult.value);
+        } else {
+          cooccurenceCount.textContent = "";
+          cooccurenceList.innerHTML = `<p class="panel-empty">${escapeHtml(cooccurenceResult.reason.message || "Failed to load.")}</p>`;
+        }
       } catch (error) {
+        status.hidden = false;
         status.textContent = error.message || "Failed to load recommendations.";
       } finally {
         button.disabled = false;

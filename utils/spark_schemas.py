@@ -1,4 +1,11 @@
-from pyspark.sql.types import IntegerType, StructType, StructField, StringType, ArrayType
+from pyspark.sql.types import (
+    ArrayType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+)
+
 
 def get_track_schema():
     return StructType([

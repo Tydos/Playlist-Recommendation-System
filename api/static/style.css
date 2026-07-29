@@ -500,3 +500,26 @@ body {
   color: oklch(50% 0.016 265);
   padding: 12px 0 4px;
 }
+
+/* ── Recommendation Report Grid ─────────────────────── */
+.rec-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .rec-results-grid { grid-template-columns: 1fr; }
+}
+
+.rec-column {
+  background: oklch(97.5% 0.006 265);
+  border: 1px solid oklch(90% 0.014 265);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.rec-column .panel-header {
+  margin-bottom: 14px;
+}

@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+
 import boto3
 from botocore.client import Config
+from dotenv import load_dotenv
+
 from utils.logging import get_logger
 
 load_dotenv()
